@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Registro de Notas · NSM</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{
+  --bg:#f3f5f9; --card:#fff; --ink:#1c2433; --mut:#667085; --line:#e3e7ee;
+  --pri:#7a1c3a; --pri2:#9b2c50; --soft:#f7e9ee;
+  --AD:#13803d; --A:#1d5fbf; --B:#c58400; --C:#c0392b;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+.hidden{display:none!important}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;background:var(--pri);color:#fff}
+.brand b{display:block;font-size:17px}.brand small{opacity:.85;font-size:12px}
+.pill{font-size:12px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.18);white-space:nowrap}
+.pill.warn{background:#f5b301;color:#3a2a00}.pill.ok{background:#2fb36b}
+main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:14px;color:var(--pri);text-transform:uppercase;letter-spacing:.03em}
+.card h3+.chips{margin-bottom:12px}
+.login{max-width:420px;margin:40px auto}
+.login h2{margin-top:0}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut);font-weight:600}
+input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);min-width:0}
+textarea{width:100%;min-height:140px;font-family:ui-monospace,monospace;font-size:12px}
+.login label{margin-bottom:12px}
+.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 14px;border-radius:10px;cursor:pointer}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.5}
+.msg{color:var(--C);font-size:13px;min-height:1em}
+.tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
+.tabs button{flex:1;font:inherit;font-weight:600;padding:10px;border:1px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;white-space:nowrap}
+.tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.filtros{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 10px;cursor:pointer;line-height:1.25;max-width:100%}
+.chip b{color:var(--pri)}
+.chip.on{background:var(--soft);border-color:var(--pri);box-shadow:inset 0 0 0 1px var(--pri)}
+.chips.sm .chip{padding:5px 12px;font-weight:700}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid2 .card{margin-bottom:12px}
+#lector{width:100%;border-radius:12px;overflow:hidden;background:#111;min-height:0}
+#lector:empty{display:none}
+.row{display:flex;gap:8px;align-items:center;margin-top:10px}
+.row.wrap{flex-wrap:wrap;margin-top:0}
+.row input{flex:1}
+.rapida{margin-top:12px;font-size:13px;color:var(--mut)}
+.rapida span{display:block;margin-bottom:6px}
+.ficha.vacia{color:var(--mut);padding:24px 6px;text-align:center}
+.fn{font-size:20px;font-weight:800;line-height:1.2}
+.fm{color:var(--mut);margin:4px 0 10px}
+.fcap{font-size:13px;background:var(--soft);border-radius:8px;padding:8px;margin-bottom:12px}
+.notas{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.nb{font:inherit;font-size:22px;font-weight:800;padding:16px 0;border-radius:12px;border:2px solid currentColor;background:#fff;cursor:pointer}
+.nb.AD{color:var(--AD)}.nb.A{color:var(--A)}.nb.B{color:var(--B)}.nb.C{color:var(--C)}
+.nb.on{color:#fff}.nb.AD.on{background:var(--AD);border-color:var(--AD)}.nb.A.on{background:var(--A);border-color:var(--A)}.nb.B.on{background:var(--B);border-color:var(--B)}.nb.C.on{background:var(--C);border-color:var(--C)}
+.fpie{display:flex;justify-content:space-between;margin-top:10px}
+.lhead{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px}
+.lhead h3{margin:0}
+#avance{font-size:13px;color:var(--mut);margin-left:auto}
+.li{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--line);cursor:pointer}
+.li:hover{background:#fafbfd}
+.li.sel{background:var(--soft)}
+.li .n{width:26px;color:var(--mut);font-size:12px;text-align:right}
+.li .nm{flex:1}
+.li .id{font-size:12px;color:var(--mut);font-family:ui-monospace,monospace}
+.dup{font-size:11px;color:var(--C);display:block}
+.bd{display:inline-block;min-width:38px;text-align:center;font-weight:800;border-radius:8px;padding:4px 6px;color:#fff;font-size:13px}
+.bd.AD{background:var(--AD)}.bd.A{background:var(--A)}.bd.B{background:var(--B)}.bd.C{background:var(--C)}.bd.x{background:#eef0f4;color:#9aa3b2}
+.nota{font-size:13px;color:var(--mut);margin:10px 0 0}
+.tablaWrap{overflow:auto}
+table.mx{border-collapse:collapse;font-size:12px;min-width:100%}
+.mx th,.mx td{border:1px solid var(--line);padding:4px;text-align:center}
+.mx th{background:#faf3f5;color:var(--pri)}
+.mx th.comp{font-size:11px}
+.mx td.nm{text-align:left;white-space:nowrap;position:sticky;left:0;background:#fff}
+.mx th.rot{height:150px;vertical-align:bottom;width:34px}
+.mx th.rot div{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:600;font-size:10.5px;max-height:145px;line-height:1.15;text-align:left}
+.mx select{padding:3px 2px;border-radius:6px;font-weight:800;width:46px;font-size:12px}
+.mx select.AD{background:var(--AD);color:#fff}.mx select.A{background:var(--A);color:#fff}.mx select.B{background:var(--B);color:#fff}.mx select.C{background:var(--C);color:#fff}
+.mx td.nl{background:#fbfbfd}
+.info{font-size:14px;line-height:1.6}
+.info code{background:#f1f3f7;padding:1px 5px;border-radius:5px}
+.dupl{font-size:13px;max-height:220px;overflow:auto;margin-top:8px}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#1c2433;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:92vw;text-align:center}
+#toast.on{opacity:1}#toast.err{background:var(--C)}#toast.ok{background:var(--AD)}
+@media (max-width:820px){.filtros{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body{background:#fff}
+  .top,.tabs,.filtros,#vReg,#vAju,#vVer>.card:first-child,#toast{display:none!important}
+  main{padding:0;max-width:none}
+  .card{border:none;padding:0}
+  .tablaWrap{overflow:visible}
+  .mx select{appearance:none;-webkit-appearance:none;border:none;width:auto;text-align:center}
+  .printhead{display:block!important}
+}
+.critbar{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:8px}
+.critbar h3{margin:0!important}
+.editor{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 10px;padding:12px;border:1px dashed var(--pri);border-radius:12px;background:#fffafb}
+.editor .acc{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.editor .tip{grid-column:1/-1;font-size:12px;color:var(--mut);margin:0}
+details.ref{margin-top:10px;font-size:13px;color:var(--mut)}
+details.ref summary{cursor:pointer;font-weight:600}
+details.ref ul{margin:6px 0 0;padding-left:18px}
+.chk{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink)}
+@media (max-width:820px){.editor{grid-template-columns:1fr 1fr}}
+.printhead{display:none;margin-bottom:8px;font-size:12px}
+.printhead b{font-size:14px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><b>Registro de Notas</b><small>I.E.E. "Nuestra Señora de las Mercedes" · Ayacucho</small></div>
+  <span id="estado" class="pill">—</span>
+</header>
+
+<section id="vLogin" class="card login hidden">
+  <h2>Ingreso del docente</h2>
+  <label>Apellidos y nombres del docente<input id="lgDocente" autocomplete="name"></label>
+  <label id="lgClaveWrap">Clave de acceso<input id="lgClave" type="password"></label>
+  <button class="btn pri" id="lgBtn" style="width:100%">Ingresar</button>
+  <p id="lgMsg" class="msg"></p>
+</section>
+
+<main id="app" class="hidden">
+  <nav class="tabs">
+    <button data-v="vReg" class="on">Registrar notas</button>
+    <button data-v="vVer">Ver y exportar</button>
+    <button data-v="vAju">Ajustes</button>
+  </nav>
+
+  <div class="card filtros">
+    <label>Grado<select id="fGrado"></select></label>
+    <label>Sección<select id="fSeccion"></select></label>
+    <label>Área<select id="fArea"></select></label>
+    <label>Periodo<select id="fPeriodo"></select></label>
+  </div>
+
+  <!-- ====== REGISTRAR ====== -->
+  <section id="vReg" class="vista">
+    <div class="card">
+      <h3>1. Competencia</h3><div id="compChips" class="chips"></div>
+      <div class="critbar"><h3>2. Criterio de evaluación</h3><button class="btn sm" id="btnEditCrit">✏ Editar criterios</button></div>
+      <div id="critEditor" class="editor hidden"></div>
+      <div id="critChips" class="chips"></div>
+      <details class="ref" id="refCaps"></details>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>3. Escanear QR del carnet</h3>
+        <div id="lector"></div>
+        <div class="row">
+          <button class="btn pri" id="btnCam">📷 Activar cámara</button>
+          <button class="btn" id="btnGirar" title="Cambiar cámara">🔄</button>
+        </div>
+        <div class="row">
+          <input id="idManual" inputmode="numeric" placeholder="o escribe el ID del carnet">
+          <button class="btn" id="btnId">Buscar</button>
+        </div>
+        <div class="rapida">
+          <span>Nota rápida: si eliges una, se asigna automáticamente a cada QR escaneado.</span>
+          <div id="rapChips" class="chips sm"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>4. Calificar</h3>
+        <div id="ficha" class="ficha vacia">Escanea el QR de la estudiante o tócala en la lista.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="lhead"><h3>Lista de la sección</h3><span id="avance"></span><button class="btn sm" id="btnSig">Siguiente sin nota ›</button></div>
+      <div id="lista"></div>
+    </div>
+  </section>
+
+  <!-- ====== VER / EXPORTAR ====== -->
+  <section id="vVer" class="vista hidden">
+    <div class="card">
+      <div class="row wrap">
+        <button class="btn" id="btnRecargar">⟳ Actualizar desde el servidor</button>
+        <button class="btn pri" id="btnXls">⬇ Excel de esta sección</button>
+        <button class="btn" id="btnXlsGrado">⬇ Excel de todo el grado</button>
+        <button class="btn" id="btnPrint">🖨 Imprimir</button>
+        <label class="chk"><input type="checkbox" id="chkUsados" checked> Mostrar solo criterios usados</label>
+      </div>
+      <p class="nota">Puedes corregir cualquier calificación directamente en la tabla. Desmarca «solo criterios usados» para llenar un criterio nuevo desde aquí. NL* = nivel de logro sugerido de la competencia (promedio de sus criterios: AD=4, A=3, B=2, C=1).</p>
+    </div>
+    <div class="card tablaWrap">
+      <div class="printhead" id="printHead"></div>
+      <div id="tabla"></div>
+    </div>
+  </section>
+
+  <!-- ====== AJUSTES ====== -->
+  <section id="vAju" class="vista hidden">
+    <div class="card info" id="infoSesion"></div>
+    <div class="card">
+      <h3>Lista de estudiantes</h3>
+      <div class="row wrap">
+        <button class="btn" id="btnEst">⟳ Descargar lista desde Google Sheets</button>
+        <button class="btn" id="btnSync">⇅ Sincronizar notas pendientes</button>
+        <button class="btn" id="btnBackup">⬇ Respaldo de notas (JSON)</button>
+      </div>
+      <p class="nota">Modo sin servidor o para pruebas: pega aquí la lista copiada de Excel (ID, ALUMNO, GRADO, SECCION) y pulsa Cargar.</p>
+      <textarea id="txtLista" placeholder="1	ALARCON ENCISO, KENDAL ARIANA	PRIMERO	A"></textarea>
+      <div class="row"><button class="btn pri" id="btnCargarLista">Cargar lista pegada</button></div>
+    </div>
+    <div class="card">
+      <h3>Revisión de la lista</h3>
+      <div id="revision" class="dupl"></div>
+    </div>
+    <div class="card">
+      <button class="btn" id="btnSalir">Cerrar sesión</button>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+/* ================= CONFIGURACIÓN ================= */
+const CONFIG = {
+  WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbxxxu6TR6uZQRaBSAc4BbuwCdGMQivL5XtbCYIEjzrNq18-oy-5hBRvVUuw3loc_cx8/exec',
+  INSTITUCION: 'I.E.E. "NUESTRA SEÑORA DE LAS MERCEDES"',
+  LUGAR: 'AYACUCHO',
+  ANIO: 2026,
+  PERIODOS: ['I BIMESTRE', 'II BIMESTRE', 'III BIMESTRE', 'IV BIMESTRE'],
+  ESCALA: ['AD', 'A', 'B', 'C'],
+  NCRIT: 6          // criterios de evaluación por competencia
+};
+const GRADOS = ['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO', 'QUINTO'];
+const GCORTO = { PRIMERO: '1ro', SEGUNDO: '2do', TERCERO: '3ro', CUARTO: '4to', QUINTO: '5to' };
+
+/* ===== Áreas del CNEB – Secundaria: competencias (las capacidades se muestran solo como referencia
+   para que el docente redacte sus criterios de evaluación) ===== */
+const AREAS = [
+  { cod: 'MAT', nombre: 'MATEMÁTICA', comps: [
+    ['Resuelve problemas de cantidad', [
+      'Traduce cantidades a expresiones numéricas',
+      'Comunica su comprensión sobre los números y las operaciones',
+      'Usa estrategias y procedimientos de estimación y cálculo',
+      'Argumenta afirmaciones sobre las relaciones numéricas y las operaciones']],
+    ['Resuelve problemas de regularidad, equivalencia y cambio', [
+      'Traduce datos y condiciones a expresiones algebraicas y gráficas',
+      'Comunica su comprensión sobre las relaciones algebraicas',
+      'Usa estrategias y procedimientos para encontrar equivalencias y reglas generales',
+      'Argumenta afirmaciones sobre relaciones de cambio y equivalencia']],
+    ['Resuelve problemas de forma, movimiento y localización', [
+      'Modela objetos con formas geométricas y sus transformaciones',
+      'Comunica su comprensión sobre las formas y relaciones geométricas',
+      'Usa estrategias y procedimientos para orientarse en el espacio',
+      'Argumenta afirmaciones sobre relaciones geométricas']],
+    ['Resuelve problemas de gestión de datos e incertidumbre', [
+      'Representa datos con gráficos y medidas estadísticas o probabilísticas',
+      'Comunica su comprensión de los conceptos estadísticos y probabilísticos',
+      'Usa estrategias y procedimientos para recopilar y procesar datos',
+      'Sustenta conclusiones o decisiones con base en la información obtenida']]
+  ]},
+  { cod: 'COM', nombre: 'COMUNICACIÓN', comps: [
+    ['Se comunica oralmente en su lengua materna', [
+      'Obtiene información del texto oral',
+      'Infiere e interpreta información del texto oral',
+      'Adecúa, organiza y desarrolla las ideas de forma coherente y cohesionada',
+      'Utiliza recursos no verbales y paraverbales de forma estratégica',
+      'Interactúa estratégicamente con distintos interlocutores',
+      'Reflexiona y evalúa la forma, el contenido y contexto del texto oral']],
+    ['Lee diversos tipos de textos escritos en su lengua materna', [
+      'Obtiene información del texto escrito',
+      'Infiere e interpreta información del texto',
+      'Reflexiona y evalúa la forma, el contenido y contexto del texto']],
+    ['Escribe diversos tipos de textos en su lengua materna', [
+      'Adecúa el texto a la situación comunicativa',
+      'Organiza y desarrolla las ideas de forma coherente y cohesionada',
+      'Utiliza convenciones del lenguaje escrito de forma pertinente',
+      'Reflexiona y evalúa la forma, el contenido y contexto del texto escrito']]
+  ]},
+  { cod: 'ING', nombre: 'INGLÉS COMO LENGUA EXTRANJERA', comps: [
+    ['Se comunica oralmente en inglés como lengua extranjera', [
+      'Obtiene información de textos orales',
+      'Infiere e interpreta información de textos orales',
+      'Adecúa, organiza y desarrolla las ideas de forma coherente y cohesionada',
+      'Utiliza recursos no verbales y paraverbales de forma estratégica',
+      'Interactúa estratégicamente con distintos interlocutores',
+      'Reflexiona y evalúa la forma, el contenido y el contexto del texto oral']],
+    ['Lee diversos tipos de textos escritos en inglés como lengua extranjera', [
+      'Obtiene información del texto escrito',
+      'Infiere e interpreta información del texto',
+      'Reflexiona y evalúa la forma, el contenido y contexto del texto']],
+    ['Escribe diversos tipos de textos en inglés como lengua extranjera', [
+      'Adecúa el texto a la situación comunicativa',
+      'Organiza y desarrolla las ideas de forma coherente y cohesionada',
+      'Utiliza convenciones del lenguaje escrito de forma pertinente',
+      'Reflexiona y evalúa la forma, el contenido y el contexto del texto escrito']]
+  ]},
+  { cod: 'CYT', nombre: 'CIENCIA Y TECNOLOGÍA', comps: [
+    ['Indaga mediante métodos científicos para construir sus conocimientos', [
+      'Problematiza situaciones para hacer indagación',
+      'Diseña estrategias para hacer indagación',
+      'Genera y registra datos o información',
+      'Analiza datos e información',
+      'Evalúa y comunica el proceso y resultados de su indagación']],
+    ['Explica el mundo físico basándose en conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y universo', [
+      'Comprende y usa conocimientos sobre los seres vivos, materia y energía, biodiversidad, Tierra y universo',
+      'Evalúa las implicancias del saber y del quehacer científico y tecnológico']],
+    ['Diseña y construye soluciones tecnológicas para resolver problemas de su entorno', [
+      'Determina una alternativa de solución tecnológica',
+      'Diseña la alternativa de solución tecnológica',
+      'Implementa y valida la alternativa de solución tecnológica',
+      'Evalúa y comunica el funcionamiento y los impactos de su alternativa de solución tecnológica']]
+  ]},
+  { cod: 'CCSS', nombre: 'CIENCIAS SOCIALES', comps: [
+    ['Construye interpretaciones históricas', [
+      'Interpreta críticamente fuentes diversas',
+      'Comprende el tiempo histórico',
+      'Elabora explicaciones sobre procesos históricos']],
+    ['Gestiona responsablemente el espacio y el ambiente', [
+      'Comprende las relaciones entre los elementos naturales y sociales',
+      'Maneja fuentes de información para comprender el espacio geográfico y el ambiente',
+      'Genera acciones para conservar el ambiente local y global']],
+    ['Gestiona responsablemente los recursos económicos', [
+      'Comprende las relaciones entre los elementos del sistema económico y financiero',
+      'Toma decisiones económicas y financieras']]
+  ]},
+  { cod: 'DPCC', nombre: 'DESARROLLO PERSONAL, CIUDADANÍA Y CÍVICA', comps: [
+    ['Construye su identidad', [
+      'Se valora a sí mismo',
+      'Autorregula sus emociones',
+      'Reflexiona y argumenta éticamente',
+      'Vive su sexualidad de manera integral y responsable de acuerdo a su etapa de desarrollo y madurez']],
+    ['Convive y participa democráticamente en la búsqueda del bien común', [
+      'Interactúa con todas las personas',
+      'Construye normas y asume acuerdos y leyes',
+      'Maneja conflictos de manera constructiva',
+      'Delibera sobre asuntos públicos',
+      'Participa en acciones que promueven el bienestar común']]
+  ]},
+  { cod: 'EF', nombre: 'EDUCACIÓN FÍSICA', comps: [
+    ['Se desenvuelve de manera autónoma a través de su motricidad', [
+      'Comprende su cuerpo',
+      'Se expresa corporalmente']],
+    ['Asume una vida saludable', [
+      'Comprende las relaciones entre la actividad física, alimentación, postura e higiene personal y del ambiente, y la salud',
+      'Incorpora prácticas que mejoran su calidad de vida']],
+    ['Interactúa a través de sus habilidades sociomotrices', [
+      'Se relaciona utilizando sus habilidades sociomotrices',
+      'Crea y aplica estrategias y tácticas de juego']]
+  ]},
+  { cod: 'ART', nombre: 'ARTE Y CULTURA', comps: [
+    ['Aprecia de manera crítica manifestaciones artístico-culturales', [
+      'Percibe manifestaciones artístico-culturales',
+      'Contextualiza manifestaciones artístico-culturales',
+      'Reflexiona creativa y críticamente sobre manifestaciones artístico-culturales']],
+    ['Crea proyectos desde los lenguajes artísticos', [
+      'Explora y experimenta los lenguajes artísticos',
+      'Aplica procesos creativos',
+      'Evalúa y comunica sus procesos y proyectos']]
+  ]},
+  { cod: 'REL', nombre: 'EDUCACIÓN RELIGIOSA', comps: [
+    ['Construye su identidad como persona humana, amada por Dios, digna, libre y trascendente', [
+      'Conoce a Dios y asume su identidad religiosa y espiritual como persona digna, libre y trascendente',
+      'Cultiva y valora las manifestaciones religiosas de su entorno argumentando su fe de manera comprensible y respetuosa']],
+    ['Asume la experiencia del encuentro personal y comunitario con Dios en su proyecto de vida', [
+      'Transforma su entorno desde el encuentro personal y comunitario con Dios y desde la fe que profesa',
+      'Actúa coherentemente en razón de su fe según los principios de su conciencia moral en situaciones concretas de la vida']]
+  ]},
+  { cod: 'EPT', nombre: 'EDUCACIÓN PARA EL TRABAJO', comps: [
+    ['Gestiona proyectos de emprendimiento económico o social', [
+      'Crea propuestas de valor',
+      'Aplica habilidades técnicas',
+      'Trabaja cooperativamente para lograr objetivos y metas',
+      'Evalúa los resultados del proyecto de emprendimiento']]
+  ]},
+  { cod: 'TIC', nombre: 'COMPETENCIA TRANSVERSAL – ENTORNOS VIRTUALES (TIC)', comps: [
+    ['Se desenvuelve en entornos virtuales generados por las TIC', [
+      'Personaliza entornos virtuales',
+      'Gestiona información del entorno virtual',
+      'Interactúa en entornos virtuales',
+      'Crea objetos virtuales en diversos formatos']]
+  ]},
+  { cod: 'AUT', nombre: 'COMPETENCIA TRANSVERSAL – APRENDIZAJE AUTÓNOMO', comps: [
+    ['Gestiona su aprendizaje de manera autónoma', [
+      'Define metas de aprendizaje',
+      'Organiza acciones estratégicas para alcanzar sus metas de aprendizaje',
+      'Monitorea y ajusta su desempeño durante el proceso de aprendizaje']]
+  ]}
+];
+
+/* ================= ESTADO ================= */
+const $ = id => document.getElementById(id);
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+};
+const S = {
+  docente: LS.get('nsmDocente', ''),
+  clave: LS.get('nsmClave', ''),
+  est: LS.get('nsmEst', []),          // [id, nombre, grado, seccion]
+  store: LS.get('nsmNotas', {}),      // "periodo|area|id|cod" -> nota
+  cola: LS.get('nsmCola', []),        // registros pendientes de enviar
+  crit: LS.get('nsmCrit', {}),        // "periodo|area|grado|seccion|ci" -> [6 nombres]
+  critCola: LS.get('nsmCritCola', {}),// criterios pendientes de enviar
+  editando: false,
+  sel: LS.get('nsmSel', { grado: 'PRIMERO', seccion: 'A', area: 'MAT', periodo: CONFIG.PERIODOS[0], comp: 0, crit: 0 }),
+  actual: null, rapida: '', porId: new Map(), dups: new Map()
+};
+const conServidor = () => !!CONFIG.WEBAPP_URL;
+const guardarLS = () => { LS.set('nsmNotas', S.store); LS.set('nsmCola', S.cola); LS.set('nsmCrit', S.crit); LS.set('nsmCritCola', S.critCola); };
+const pendientes = () => S.cola.length + Object.keys(S.critCola).length;
+const pad = id => String(id).padStart(4, '0');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const normNom = s => String(s).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z]/g, '');
+
+/* ================= UTILIDADES UI ================= */
+let tTo;
+function toast(msg, tipo) {
+  const t = $('toast'); t.textContent = msg; t.className = 'on ' + (tipo || '');
+  clearTimeout(tTo); tTo = setTimeout(() => t.className = '', 2600);
+}
+let actx;
+function beep(ok) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.value = ok ? 1046 : 220; o.type = ok ? 'sine' : 'square';
+    g.gain.value = .12; o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + (ok ? .12 : .35));
+  } catch (e) { }
+  if (navigator.vibrate) navigator.vibrate(ok ? 60 : [80, 60, 80]);
+}
+function pintarEstado() {
+  const p = $('estado');
+  if (!conServidor()) { p.textContent = 'Modo local'; p.className = 'pill warn'; return; }
+  if (!navigator.onLine) { p.textContent = `Sin internet · ${pendientes()} pendientes`; p.className = 'pill warn'; return; }
+  if (pendientes()) { p.textContent = `⏳ ${pendientes()} por enviar`; p.className = 'pill warn'; return; }
+  p.textContent = '✓ Sincronizado'; p.className = 'pill ok';
+}
+
+/* ================= SERVIDOR ================= */
+async function apiGet(params) {
+  const q = new URLSearchParams(Object.assign({ clave: S.clave }, params));
+  const r = await fetch(CONFIG.WEBAPP_URL + '?' + q.toString());
+  return r.json();
+}
+async function apiPost(obj) {
+  const r = await fetch(CONFIG.WEBAPP_URL, { method: 'POST', body: JSON.stringify(Object.assign({ clave: S.clave, docente: S.docente }, obj)) });
+  return r.json();
+}
+let enviando = false;
+async function sincronizar(manual) {
+  if (!conServidor() || enviando || !pendientes() || !navigator.onLine) { pintarEstado(); return; }
+  enviando = true; pintarEstado();
+  let ok = false;
+  try {
+    const snap = Object.entries(S.critCola);
+    if (snap.length) {
+      const r = await apiPost({ accion: 'guardarCriterios', items: snap.map(x => x[1]) });
+      if (!r.ok) throw new Error(r.error);
+      snap.forEach(([k, v]) => { if (S.critCola[k] === v) delete S.critCola[k]; });
+    }
+    if (S.cola.length) {
+      const lote = S.cola.slice(0, 150);
+      const r = await apiPost({ accion: 'guardar', registros: lote });
+      if (!r.ok) throw new Error(r.error);
+      S.cola.splice(0, lote.length);
+    }
+    guardarLS(); ok = true;
+  } catch (e) {
+    if (manual) toast('No se pudo enviar: ' + e.message + '. Los datos siguen guardados en este equipo.', 'err');
+  }
+  enviando = false; pintarEstado();
+  if (ok && pendientes()) sincronizar(manual);
+  else if (ok && manual) toast('Notas sincronizadas', 'ok');
+}
+async function cargarEstudiantes(aviso) {
+  if (!conServidor()) return;
+  try {
+    const r = await apiGet({ accion: 'estudiantes' });
+    if (!r.ok) throw new Error(r.error);
+    S.est = r.data; LS.set('nsmEst', S.est); indexar();
+    if (aviso) toast(`Lista actualizada: ${S.est.length} estudiantes`, 'ok');
+  } catch (e) { toast('No se pudo descargar la lista: ' + e.message, 'err'); }
+}
+async function cargarNotas(grado, seccion, aviso) {
+  if (!conServidor() || !navigator.onLine) return;
+  const { area, periodo } = S.sel;
+  try {
+    const r = await apiGet({ accion: 'notas', area, periodo, grado, seccion: seccion || '' });
+    if (!r.ok) throw new Error(r.error);
+    const pend = new Set(S.cola.map(x => clave(x.periodo, x.area, x.id, x.cod)));
+    r.data.forEach(f => Object.keys(f.n).forEach(cod => {
+      const k = clave(periodo, area, f.id, cod);
+      if (pend.has(k)) return;
+      if (f.n[cod]) S.store[k] = f.n[cod]; else delete S.store[k];
+    }));
+    (r.criterios || []).forEach(c => {
+      const k = claveCrit(periodo, area, c.grado, c.seccion, c.comp - 1);
+      if (!S.critCola[k]) S.crit[k] = c.nombres;
+    });
+    guardarLS();
+    if (aviso) toast('Notas actualizadas desde el servidor', 'ok');
+  } catch (e) { if (aviso) toast('No se pudo actualizar: ' + e.message, 'err'); }
+}
+
+/* ================= DATOS ================= */
+function indexar() {
+  S.porId = new Map(S.est.map(e => [Number(e[0]), e]));
+  const grupos = new Map();
+  S.est.forEach(e => {
+    const k = normNom(e[1]);
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(e);
+  });
+  S.dups = new Map();
+  grupos.forEach(arr => { if (arr.length > 1) arr.forEach(e => S.dups.set(Number(e[0]), arr.filter(x => x !== e).map(x => x[0]))); });
+}
+const areaObj = cod => AREAS.find(a => a.cod === (cod || S.sel.area)) || AREAS[0];
+const clave = (periodo, area, id, cod) => `${periodo}|${area}|${Number(id)}|${cod}`;
+const getNota = (id, cod, area, periodo) => S.store[clave(periodo || S.sel.periodo, area || S.sel.area, id, cod)] || '';
+const seccionesDe = g => [...new Set(S.est.filter(e => e[2] === g).map(e => e[3]))].sort();
+const alumnosDe = (g, s) => S.est.filter(e => e[2] === g && e[3] === s).sort((a, b) => a[1].localeCompare(b[1], 'es'));
+const alumnosSeccion = () => alumnosDe(S.sel.grado, S.sel.seccion);
+/* ---- Criterios de evaluación (6 por competencia, nombre editable por aula) ---- */
+const claveCrit = (periodo, area, grado, seccion, ci) => `${periodo}|${area}|${grado}|${seccion}|${ci}`;
+function nombresCrit(ci, g, s) {
+  const arr = S.crit[claveCrit(S.sel.periodo, S.sel.area, g || S.sel.grado, s || S.sel.seccion, ci)] || [];
+  return Array.from({ length: CONFIG.NCRIT }, (_, k) => String(arr[k] || '').trim());
+}
+const critNombre = (ci, k, g, s) => nombresCrit(ci, g, s)[k] || `Criterio ${k + 1}`;
+function critActual() {
+  const A = areaObj(), ci = Math.min(S.sel.comp, A.comps.length - 1);
+  const k = Math.min(S.sel.crit || 0, CONFIG.NCRIT - 1);
+  return { cod: `C${ci + 1}.${k + 1}`, comp: A.comps[ci][0], nombre: critNombre(ci, k), ci, k };
+}
+// Criterios que aparecen en tabla/Excel: los que tienen alguna nota o un nombre propio
+function critUsados(ci, g, s, alumnos, area, periodo) {
+  const nom = nombresCrit(ci, g, s), out = [];
+  for (let k = 0; k < CONFIG.NCRIT; k++) {
+    const cod = `C${ci + 1}.${k + 1}`;
+    if (nom[k] || alumnos.some(e => getNota(e[0], cod, area, periodo))) out.push(k);
+  }
+  return out.length ? out : [0];
+}
+function guardarCriterios(nombres, todoGrado) {
+  const { periodo, area, grado } = S.sel, ci = critActual().ci;
+  const secs = todoGrado ? seccionesDe(grado) : [S.sel.seccion];
+  secs.forEach(s => {
+    const k = claveCrit(periodo, area, grado, s, ci);
+    S.crit[k] = nombres.slice();
+    if (conServidor()) S.critCola[k] = { periodo, area, grado, seccion: s, comp: ci + 1, nombres: nombres.slice() };
+  });
+  guardarLS(); sincronizar();
+  toast(todoGrado ? `Criterios aplicados a ${secs.length} secciones de ${GCORTO[grado]}` : 'Criterios guardados', 'ok');
+}
+
+function setNota(id, cod, nota) {
+  const e = S.porId.get(Number(id)); if (!e) return;
+  const { area, periodo } = S.sel;
+  const k = clave(periodo, area, id, cod);
+  if (nota) S.store[k] = nota; else delete S.store[k];
+  const m = cod.match(/^C(\d+)\.(\d+)$/);
+  const criterio = m ? critNombre(+m[1] - 1, +m[2] - 1, e[2], e[3]) : '';
+  if (conServidor()) S.cola.push({ periodo, area, id: Number(id), alumno: e[1], grado: e[2], seccion: e[3], cod, criterio, nota: nota || '' });
+  guardarLS(); pintarEstado(); sincronizar();
+}
+
+/* ================= FILTROS ================= */
+function opciones(sel, arr, val) {
+  sel.innerHTML = arr.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
+  if (arr.some(o => o[0] === val)) sel.value = val;
+}
+function pintarFiltros() {
+  opciones($('fGrado'), GRADOS.map(g => [g, g]), S.sel.grado);
+  S.sel.grado = $('fGrado').value;
+  const secs = seccionesDe(S.sel.grado);
+  opciones($('fSeccion'), secs.map(s => [s, s]), S.sel.seccion);
+  S.sel.seccion = $('fSeccion').value;
+  opciones($('fArea'), AREAS.map(a => [a.cod, a.nombre]), S.sel.area);
+  opciones($('fPeriodo'), CONFIG.PERIODOS.map(p => [p, p]), S.sel.periodo);
+  LS.set('nsmSel', S.sel);
+}
+function cambioFiltro(e) {
+  const id = e.target.id;
+  if (id === 'fGrado') { S.sel.grado = e.target.value; S.sel.seccion = seccionesDe(S.sel.grado)[0] || ''; }
+  if (id === 'fSeccion') S.sel.seccion = e.target.value;
+  if (id === 'fArea') { S.sel.area = e.target.value; S.sel.comp = 0; S.sel.crit = 0; }
+  if (id === 'fPeriodo') S.sel.periodo = e.target.value;
+  S.actual = null; cerrarEditor();
+  pintarFiltros(); pintarTodo();
+  cargarNotas(S.sel.grado, S.sel.seccion).then(pintarTodo);
+}
+
+/* ================= VISTA REGISTRAR ================= */
+function pintarChips() {
+  const A = areaObj(), c = critActual();
+  $('compChips').innerHTML = A.comps.map((cp, i) =>
+    `<button class="chip ${i === c.ci ? 'on' : ''}" data-comp="${i}"><b>C${i + 1}.</b> ${esc(cp[0])}</button>`).join('');
+  $('critChips').innerHTML = Array.from({ length: CONFIG.NCRIT }, (_, k) =>
+    `<button class="chip ${k === c.k ? 'on' : ''}" data-crit="${k}"><b>C${c.ci + 1}.${k + 1}</b> ${esc(critNombre(c.ci, k))}</button>`).join('');
+  $('refCaps').innerHTML = `<summary>Ver capacidades de esta competencia (referencia para redactar criterios)</summary>
+    <ul>${A.comps[c.ci][1].map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  $('rapChips').innerHTML = ['', ...CONFIG.ESCALA].map(n =>
+    `<button class="chip ${S.rapida === n ? 'on' : ''}" data-rap="${n}">${n || 'Ninguna'}</button>`).join('');
+}
+function abrirEditor() {
+  const c = critActual(), nom = nombresCrit(c.ci);
+  $('critEditor').innerHTML =
+    `<p class="tip">Competencia ${c.ci + 1} · ${GCORTO[S.sel.grado]} ${esc(S.sel.seccion)} · ${esc(S.sel.periodo)}. Escribe el nombre de cada criterio (ej. Exposición, Revisión de cuaderno, Práctica calificada). Deja vacío el que no uses.</p>` +
+    nom.map((n, k) => `<label>Criterio ${k + 1}<input data-k="${k}" maxlength="60" value="${esc(n)}" placeholder="Criterio ${k + 1}"></label>`).join('') +
+    `<div class="acc"><button class="btn pri sm" data-acc="sec">Guardar para ${GCORTO[S.sel.grado]} ${esc(S.sel.seccion)}</button>
+     <button class="btn sm" data-acc="grado">Guardar para todas las secciones de ${GCORTO[S.sel.grado]}</button>
+     <button class="btn sm" data-acc="cancel">Cancelar</button></div>`;
+  $('critEditor').classList.remove('hidden'); S.editando = true;
+  $('btnEditCrit').textContent = '✕ Cerrar editor';
+  const i = $('critEditor').querySelector('input'); if (i) i.focus();
+}
+function cerrarEditor() {
+  $('critEditor').classList.add('hidden'); S.editando = false;
+  $('btnEditCrit').textContent = '✏ Editar criterios';
+}
+function pintarFicha() {
+  const f = $('ficha'), e = S.actual && S.porId.get(S.actual);
+  if (!e) { f.className = 'ficha vacia'; f.innerHTML = 'Escanea el QR de la estudiante o tócala en la lista.'; return; }
+  const c = critActual(), n = getNota(e[0], c.cod);
+  const dup = S.dups.get(Number(e[0]));
+  f.className = 'ficha';
+  f.innerHTML = `<div class="fn">${esc(e[1])}</div>
+    <div class="fm">ID ${pad(e[0])} · ${GCORTO[e[2]] || e[2]} ${esc(e[3])}${dup ? ` · <span style="color:var(--C)">⚠ nombre repetido en ID ${dup.map(pad).join(', ')}</span>` : ''}</div>
+    <div class="fcap"><b>${c.cod}</b> ${esc(c.nombre)} <span style="color:var(--mut)">· ${esc(c.comp)}</span></div>
+    <div class="notas">${CONFIG.ESCALA.map(x => `<button class="nb ${x} ${n === x ? 'on' : ''}" data-nota="${x}">${x}</button>`).join('')}</div>
+    <div class="fpie"><button class="btn sm" data-nota="">Borrar nota</button><button class="btn sm" id="btnSig2">Siguiente sin nota ›</button></div>`;
+}
+function pintarLista() {
+  const c = critActual(), al = alumnosSeccion();
+  let hechas = 0;
+  $('lista').innerHTML = al.map((e, i) => {
+    const n = getNota(e[0], c.cod); if (n) hechas++;
+    const dup = S.dups.get(Number(e[0]));
+    return `<div class="li ${S.actual === Number(e[0]) ? 'sel' : ''}" data-id="${e[0]}">
+      <span class="n">${i + 1}</span>
+      <span class="nm">${esc(e[1])}${dup ? `<span class="dup">⚠ posible duplicado (ID ${dup.map(pad).join(', ')})</span>` : ''}</span>
+      <span class="id">${pad(e[0])}</span>
+      <span class="bd ${n || 'x'}">${n || '—'}</span></div>`;
+  }).join('') || '<p class="nota">No hay estudiantes cargadas para esta sección. Revisa Ajustes.</p>';
+  $('avance').textContent = al.length ? `${hechas}/${al.length} calificadas en ${c.cod}` : '';
+}
+function seleccionar(id) {
+  S.actual = Number(id); pintarFicha(); pintarLista();
+  const li = document.querySelector(`.li[data-id="${id}"]`);
+  if (li) li.scrollIntoView({ block: 'nearest' });
+}
+function siguienteSinNota() {
+  const c = critActual(), al = alumnosSeccion();
+  if (!al.length) return;
+  const start = Math.max(0, al.findIndex(e => Number(e[0]) === S.actual) + 1);
+  for (let k = 0; k < al.length; k++) {
+    const e = al[(start + k) % al.length];
+    if (!getNota(e[0], c.cod)) { seleccionar(e[0]); return; }
+  }
+  toast('Todas las estudiantes ya tienen nota en este criterio', 'ok');
+}
+function asignar(nota) {
+  if (!S.actual) return;
+  const c = critActual();
+  setNota(S.actual, c.cod, nota);
+  beep(true);
+  pintarFicha(); pintarLista();
+}
+
+/* ================= ESCÁNER QR ================= */
+let qr = null, camOn = false, camFront = false, ultimo = { t: '', ms: 0 };
+async function toggleCam() {
+  if (camOn) { await pararCam(); return; }
+  try {
+    qr = qr || new Html5Qrcode('lector');
+    await qr.start({ facingMode: camFront ? 'user' : 'environment' }, { fps: 10, qrbox: { width: 230, height: 230 } }, onScan, () => { });
+    camOn = true; $('btnCam').textContent = '⏹ Detener cámara';
+  } catch (e) { toast('No se pudo abrir la cámara: ' + e, 'err'); }
+}
+async function pararCam() {
+  if (qr && camOn) { try { await qr.stop(); qr.clear(); } catch (e) { } }
+  camOn = false; $('btnCam').textContent = '📷 Activar cámara';
+}
+async function girarCam() { camFront = !camFront; if (camOn) { await pararCam(); await toggleCam(); } }
+function idDesdeTexto(t) {
+  const m = String(t).trim().match(/\d+/g);
+  return m ? parseInt(m[m.length - 1], 10) : NaN;
+}
+function onScan(texto) {
+  const ahora = Date.now();
+  if (texto === ultimo.t && ahora - ultimo.ms < 2500) return;
+  ultimo = { t: texto, ms: ahora };
+  procesarId(idDesdeTexto(texto));
+}
+function procesarId(id) {
+  const e = S.porId.get(id);
+  if (!e) { beep(false); toast(`ID ${isNaN(id) ? '?' : pad(id)} no está en la lista`, 'err'); return; }
+  if (e[2] !== S.sel.grado || e[3] !== S.sel.seccion) {
+    beep(false);
+    toast(`${e[1]} es de ${GCORTO[e[2]]} ${e[3]}, no de ${GCORTO[S.sel.grado]} ${S.sel.seccion}`, 'err');
+    return;
+  }
+  seleccionar(id);
+  if (S.rapida) { asignar(S.rapida); toast(`${e[1].split(',')[0]} → ${S.rapida}`, 'ok'); }
+  else beep(true);
+}
+
+/* ================= VISTA VER / EXPORTAR ================= */
+const VAL = { AD: 4, A: 3, B: 2, C: 1 };
+function nlSug(notas) {
+  const v = notas.filter(n => VAL[n]).map(n => VAL[n]);
+  if (!v.length) return '';
+  const p = v.reduce((a, b) => a + b, 0) / v.length;
+  return p >= 3.5 ? 'AD' : p >= 2.5 ? 'A' : p >= 1.5 ? 'B' : 'C';
+}
+function pintarTabla() {
+  const A = areaObj(), al = alumnosSeccion();
+  $('printHead').innerHTML = `<b>${esc(CONFIG.INSTITUCION)}</b><br>REGISTRO DE CALIFICACIONES — ${esc(A.nombre)} · ${S.sel.grado} "${S.sel.seccion}" · ${S.sel.periodo} ${CONFIG.ANIO} · Docente: ${esc(S.docente)}`;
+  let h1 = '<tr><th rowspan="2">N°</th><th rowspan="2">ID</th><th rowspan="2">APELLIDOS Y NOMBRES</th>';
+  let h2 = '<tr>';
+  const soloUsados = $('chkUsados').checked;
+  const cols = A.comps.map((cp, i) => soloUsados
+    ? critUsados(i, S.sel.grado, S.sel.seccion, al)
+    : Array.from({ length: CONFIG.NCRIT }, (_, k) => k));
+  A.comps.forEach((cp, i) => {
+    h1 += `<th class="comp" colspan="${cols[i].length + 1}">C${i + 1}. ${esc(cp[0])}</th>`;
+    cols[i].forEach(k => { const nm = critNombre(i, k); h2 += `<th class="rot" title="${esc(nm)}"><div>C${i + 1}.${k + 1} ${esc(nm)}</div></th>`; });
+    h2 += '<th class="rot"><div>NL* C' + (i + 1) + '</div></th>';
+  });
+  h1 += '</tr>'; h2 += '</tr>';
+  const opts = ['', ...CONFIG.ESCALA];
+  const filas = al.map((e, r) => {
+    let td = `<td>${r + 1}</td><td>${pad(e[0])}</td><td class="nm">${esc(e[1])}</td>`;
+    A.comps.forEach((cp, i) => {
+      const todas = Array.from({ length: CONFIG.NCRIT }, (_, k) => getNota(e[0], `C${i + 1}.${k + 1}`));
+      cols[i].forEach(k => {
+        const cod = `C${i + 1}.${k + 1}`, n = todas[k];
+        td += `<td><select class="${n}" data-id="${e[0]}" data-cod="${cod}">${opts.map(o => `<option ${o === n ? 'selected' : ''}>${o}</option>`).join('')}</select></td>`;
+      });
+      const s = nlSug(todas);
+      td += `<td class="nl">${s ? `<span class="bd ${s}">${s}</span>` : ''}</td>`;
+    });
+    return `<tr>${td}</tr>`;
+  }).join('');
+  $('tabla').innerHTML = al.length ? `<table class="mx"><thead>${h1}${h2}</thead><tbody>${filas}</tbody></table>` : '<p class="nota">Sin estudiantes en esta sección.</p>';
+}
+
+/* ---------- Excel (ExcelJS) ---------- */
+const FILL = { AD: 'FF13803D', A: 'FF1D5FBF', B: 'FFC58400', C: 'FFC0392B' };
+const BORDE = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+function hojaSeccion(wb, grado, seccion) {
+  const A = areaObj(), al = alumnosDe(grado, seccion), { area, periodo } = S.sel;
+  const ws = wb.addWorksheet(`${GCORTO[grado]} ${seccion}`, {
+    pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 }, printTitlesRow: '6:7' },
+    views: [{ state: 'frozen', xSplit: 3, ySplit: 7 }]
+  });
+  const cols = A.comps.map((cp, i) => critUsados(i, grado, seccion, al, area, periodo));
+  const totalCols = 3 + cols.reduce((s, c) => s + c.length + 1, 0);
+  ws.getColumn(1).width = 4.5; ws.getColumn(2).width = 7; ws.getColumn(3).width = 40;
+  for (let c = 4; c <= totalCols; c++) ws.getColumn(c).width = 5.2;
+
+  const titulo = (fila, texto, size, bold) => {
+    ws.mergeCells(fila, 1, fila, totalCols);
+    const cell = ws.getCell(fila, 1); cell.value = texto;
+    cell.font = { bold: bold !== false, size: size || 11 }; cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  };
+  titulo(1, CONFIG.INSTITUCION + ' — ' + CONFIG.LUGAR, 13);
+  titulo(2, `REGISTRO DE CALIFICACIONES — ÁREA: ${A.nombre}`, 12);
+  titulo(3, `GRADO: ${grado}    SECCIÓN: "${seccion}"    PERIODO: ${periodo}    AÑO: ${CONFIG.ANIO}`, 11);
+  titulo(4, `DOCENTE: ${S.docente}    FECHA DE IMPRESIÓN: ${new Date().toLocaleDateString('es-PE')}`, 10, false);
+
+  // Encabezados
+  ['N°', 'ID', 'APELLIDOS Y NOMBRES'].forEach((t, i) => {
+    ws.mergeCells(6, i + 1, 7, i + 1);
+    const c = ws.getCell(6, i + 1); c.value = t;
+  });
+  let col = 4;
+  A.comps.forEach((cp, i) => {
+    const ini = col, fin = col + cols[i].length;
+    ws.mergeCells(6, ini, 6, fin);
+    ws.getCell(6, ini).value = `COMPETENCIA ${i + 1}: ${cp[0].toUpperCase()}`;
+    cols[i].forEach(k => { ws.getCell(7, col).value = `C${i + 1}.${k + 1} ${critNombre(i, k, grado, seccion).toUpperCase()}`; col++; });
+    ws.getCell(7, col).value = `NL* COMPETENCIA ${i + 1}`;
+    ws.getCell(7, col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE3E7' } };
+    col++;
+  });
+  ws.getRow(6).height = 48; ws.getRow(7).height = 175;
+  for (let r = 6; r <= 7; r++) for (let c = 1; c <= totalCols; c++) {
+    const cell = ws.getCell(r, c);
+    cell.border = BORDE; cell.font = { bold: true, size: r === 6 ? 8 : 7.5 };
+    if (!cell.fill || cell.fill.type !== 'pattern') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7E9EE' } };
+    cell.alignment = (r === 7 && c > 3)
+      ? { textRotation: 90, vertical: 'bottom', horizontal: 'center', wrapText: true }
+      : { vertical: 'middle', horizontal: 'center', wrapText: true };
+  }
+
+  // Datos
+  al.forEach((e, idx) => {
+    const fila = [idx + 1, pad(e[0]), e[1]];
+    A.comps.forEach((cp, i) => {
+      const todas = Array.from({ length: CONFIG.NCRIT }, (_, k) => getNota(e[0], `C${i + 1}.${k + 1}`, area, periodo));
+      fila.push(...cols[i].map(k => todas[k]), nlSug(todas));
+    });
+    const row = ws.addRow(fila);
+    row.height = 17;
+    row.eachCell({ includeEmpty: true }, (cell, c) => {
+      if (c > totalCols) return;
+      cell.border = BORDE;
+      cell.alignment = { vertical: 'middle', horizontal: c === 3 ? 'left' : 'center' };
+      cell.font = { size: 9 };
+      const v = cell.value;
+      if (c > 3 && FILL[v]) {
+        cell.font = { size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL[v] } };
+      }
+    });
+  });
+
+  const r0 = ws.rowCount + 2;
+  ws.getCell(r0, 1).value = 'Escala: AD = Logro destacado · A = Logro esperado · B = En proceso · C = En inicio.   NL* = Nivel de logro sugerido de la competencia (promedio de sus criterios: AD=4, A=3, B=2, C=1), referencial.';
+  ws.getCell(r0, 1).font = { italic: true, size: 8 };
+  ws.getCell(r0 + 4, 3).value = '_______________________________';
+  ws.getCell(r0 + 5, 3).value = 'Firma del docente: ' + S.docente;
+  ws.getCell(r0 + 4, 3).alignment = ws.getCell(r0 + 5, 3).alignment = { horizontal: 'center' };
+  ws.getCell(r0 + 5, 3).font = { size: 9 };
+  return ws;
+}
+function hojaLeyenda(wb) {
+  const A = areaObj(), ws = wb.addWorksheet('Leyenda');
+  ws.getColumn(1).width = 9; ws.getColumn(2).width = 110;
+  ws.addRow(['ÁREA', A.nombre]).font = { bold: true };
+  ws.addRow([]);
+  ws.addRow(['', `Criterios de ${S.sel.grado} "${S.sel.seccion}" · ${S.sel.periodo}`]).font = { italic: true };
+  ws.addRow([]);
+  A.comps.forEach((cp, i) => {
+    const r = ws.addRow([`C${i + 1}`, 'COMPETENCIA: ' + cp[0]]); r.font = { bold: true };
+    for (let k = 0; k < CONFIG.NCRIT; k++) ws.addRow([`C${i + 1}.${k + 1}`, critNombre(i, k)]);
+    ws.addRow(['', 'Capacidades (referencia): ' + cp[1].join(' · ')]).font = { size: 8, color: { argb: 'FF667085' } };
+    ws.addRow([]);
+  });
+}
+async function descargar(wb, nombre) {
+  const buf = await wb.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+const nombreArchivo = extra => `Notas_${S.sel.area}_${extra}_${S.sel.periodo.replace(/\s+/g, '_')}.xlsx`;
+async function excelSeccion() {
+  const wb = new ExcelJS.Workbook(); wb.creator = 'JECKAM Academy';
+  hojaSeccion(wb, S.sel.grado, S.sel.seccion); hojaLeyenda(wb);
+  await descargar(wb, nombreArchivo(GCORTO[S.sel.grado] + S.sel.seccion));
+}
+async function excelGrado() {
+  toast('Preparando el Excel de todo el grado…');
+  await cargarNotas(S.sel.grado, '');
+  const wb = new ExcelJS.Workbook(); wb.creator = 'JECKAM Academy';
+  seccionesDe(S.sel.grado).forEach(s => hojaSeccion(wb, S.sel.grado, s));
+  hojaLeyenda(wb);
+  await descargar(wb, nombreArchivo(GCORTO[S.sel.grado] + '_TODAS'));
+}
+
+/* ================= AJUSTES ================= */
+function parseLista(txt) {
+  const out = [];
+  txt.split(/\r?\n/).forEach(l => {
+    const m = l.trim().match(/^(\d+)\s+(.+?)\s+(PRIMERO|SEGUNDO|TERCERO|CUARTO|QUINTO)\s+([A-Z])\s*$/i);
+    if (m) out.push([parseInt(m[1], 10), m[2].trim(), m[3].toUpperCase(), m[4].toUpperCase()]);
+  });
+  return out;
+}
+function pintarAjustes() {
+  $('infoSesion').innerHTML = `<b>Docente:</b> ${esc(S.docente)}<br>
+    <b>Modo:</b> ${conServidor() ? 'Conectado a Google Sheets' : 'Local (las notas solo quedan en este equipo)'}<br>
+    <b>Estudiantes cargadas:</b> ${S.est.length}<br>
+    <b>Datos pendientes de envío:</b> ${pendientes()}`;
+  const d = [...S.dups.entries()].filter(([id, otros]) => id < Math.min(...otros));
+  $('revision').innerHTML = d.length
+    ? `<p><b>${d.length} nombres aparecen con más de un ID.</b> Conviene dejar uno solo (el del carnet que tiene la estudiante); si no, sus notas se dividen entre dos IDs.</p>` +
+      d.map(([id, otros]) => { const e = S.porId.get(id); return `• ${esc(e[1])} — ID ${[id, ...otros].map(x => { const o = S.porId.get(x); return `${pad(x)} (${GCORTO[o[2]]} ${o[3]})`; }).join(' / ')}`; }).join('<br>')
+    : 'No se encontraron nombres repetidos.';
+}
+
+/* ================= NAVEGACIÓN ================= */
+function pintarTodo() {
+  pintarChips(); pintarFicha(); pintarLista();
+  if (!$('vVer').classList.contains('hidden')) pintarTabla();
+  if (!$('vAju').classList.contains('hidden')) pintarAjustes();
+  pintarEstado();
+}
+function irA(v) {
+  document.querySelectorAll('.vista').forEach(s => s.classList.toggle('hidden', s.id !== v));
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  if (v !== 'vReg') pararCam();
+  pintarTodo();
+}
+
+async function entrar() {
+  $('vLogin').classList.add('hidden'); $('app').classList.remove('hidden');
+  indexar();
+  if (conServidor()) { await cargarEstudiantes(); }
+  pintarFiltros(); pintarTodo();
+  if (!S.est.length) { irA('vAju'); toast('Carga la lista de estudiantes para empezar'); }
+  else cargarNotas(S.sel.grado, S.sel.seccion).then(pintarTodo);
+  sincronizar();
+}
+
+/* ================= EVENTOS ================= */
+$('lgBtn').onclick = async () => {
+  const doc = $('lgDocente').value.trim().toUpperCase(), cl = $('lgClave').value.trim();
+  if (!doc) { $('lgMsg').textContent = 'Escribe tu nombre.'; return; }
+  if (conServidor()) {
+    $('lgMsg').textContent = 'Verificando…';
+    S.clave = cl;
+    try { const r = await apiGet({ accion: 'ping' }); if (!r.ok) throw new Error(r.error); }
+    catch (e) { $('lgMsg').textContent = e.message || 'No se pudo conectar'; return; }
+  }
+  S.docente = doc; LS.set('nsmDocente', doc); LS.set('nsmClave', S.clave);
+  $('lgMsg').textContent = ''; entrar();
+};
+['fGrado', 'fSeccion', 'fArea', 'fPeriodo'].forEach(id => $(id).addEventListener('change', cambioFiltro));
+document.querySelector('.tabs').onclick = e => { const b = e.target.closest('button'); if (b) irA(b.dataset.v); };
+$('compChips').onclick = e => { const b = e.target.closest('[data-comp]'); if (!b) return; S.sel.comp = +b.dataset.comp; S.sel.crit = 0; LS.set('nsmSel', S.sel); cerrarEditor(); pintarTodo(); };
+$('critChips').onclick = e => { const b = e.target.closest('[data-crit]'); if (!b) return; S.sel.crit = +b.dataset.crit; LS.set('nsmSel', S.sel); pintarTodo(); };
+$('btnEditCrit').onclick = () => S.editando ? cerrarEditor() : abrirEditor();
+$('critEditor').onclick = e => {
+  const b = e.target.closest('[data-acc]'); if (!b) return;
+  if (b.dataset.acc === 'cancel') { cerrarEditor(); return; }
+  const nombres = [...$('critEditor').querySelectorAll('input')].map(i => i.value.trim().replace(/\s+/g, ' '));
+  guardarCriterios(nombres, b.dataset.acc === 'grado');
+  cerrarEditor(); pintarTodo();
+};
+$('critEditor').onkeydown = e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') $('critEditor').querySelector('[data-acc="sec"]').click(); };
+$('chkUsados').onchange = pintarTabla;
+$('rapChips').onclick = e => { const b = e.target.closest('[data-rap]'); if (!b) return; S.rapida = b.dataset.rap; pintarChips(); };
+$('ficha').onclick = e => {
+  if (e.target.id === 'btnSig2') { siguienteSinNota(); return; }
+  const b = e.target.closest('[data-nota]'); if (b) asignar(b.dataset.nota);
+};
+$('lista').onclick = e => { const li = e.target.closest('.li'); if (li) seleccionar(li.dataset.id); };
+$('btnSig').onclick = siguienteSinNota;
+$('btnCam').onclick = toggleCam;
+$('btnGirar').onclick = girarCam;
+$('btnId').onclick = () => { procesarId(parseInt($('idManual').value, 10)); $('idManual').value = ''; };
+$('idManual').onkeydown = e => { if (e.key === 'Enter') $('btnId').click(); };
+$('tabla').onchange = e => {
+  const s = e.target; if (!s.dataset.cod) return;
+  setNota(s.dataset.id, s.dataset.cod, s.value); pintarTabla();
+};
+$('btnRecargar').onclick = async () => { await cargarNotas(S.sel.grado, S.sel.seccion, true); pintarTodo(); };
+$('btnXls').onclick = excelSeccion;
+$('btnXlsGrado').onclick = excelGrado;
+$('btnPrint').onclick = () => window.print();
+$('btnEst').onclick = async () => { if (!conServidor()) { toast('Primero configura la URL del Apps Script', 'err'); return; } await cargarEstudiantes(true); pintarFiltros(); pintarTodo(); };
+$('btnSync').onclick = () => sincronizar(true);
+$('btnBackup').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ docente: S.docente, fecha: new Date(), notas: S.store, pendientes: S.cola })], { type: 'application/json' }));
+  a.download = `respaldo_notas_${Date.now()}.json`; a.click();
+};
+$('btnCargarLista').onclick = () => {
+  const l = parseLista($('txtLista').value);
+  if (!l.length) { toast('No se reconoció ninguna fila. Formato: ID  ALUMNO  GRADO  SECCIÓN', 'err'); return; }
+  S.est = l; LS.set('nsmEst', l); indexar(); pintarFiltros(); pintarTodo();
+  toast(`${l.length} estudiantes cargadas`, 'ok'); $('txtLista').value = '';
+};
+$('btnSalir').onclick = () => {
+  if (pendientes() && !confirm(`Hay ${pendientes()} datos sin enviar. Se conservarán en este equipo. ¿Cerrar sesión?`)) return;
+  pararCam(); S.docente = ''; LS.set('nsmDocente', ''); location.reload();
+};
+window.addEventListener('online', () => sincronizar());
+window.addEventListener('offline', pintarEstado);
+setInterval(() => sincronizar(), 20000);
+
+/* ================= INICIO ================= */
+if (!conServidor()) $('lgClaveWrap').classList.add('hidden');
+if (S.docente) entrar(); else { $('vLogin').classList.remove('hidden'); pintarEstado(); }
+</script>
+</body>
+</html>
