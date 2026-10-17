@@ -45,8 +45,9 @@ textarea{width:100%;min-height:140px;font-family:ui-monospace,monospace;font-siz
 .chips.sm .chip{padding:5px 12px;font-weight:700}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid2 .card{margin-bottom:12px}
-#lector{width:100%;border-radius:12px;overflow:hidden;background:#111;min-height:0}
-#lector:empty{display:none}
+#lector{width:100%;border-radius:12px;overflow:hidden;background:#111;display:none}
+#lector.on{display:block;min-height:240px}
+#lector video{width:100%!important;height:auto!important;display:block}
 .row{display:flex;gap:8px;align-items:center;margin-top:10px}
 .row.wrap{flex-wrap:wrap;margin-top:0}
 .row input{flex:1}
@@ -806,15 +807,28 @@ function asignar(nota) {
 let qr = null, camOn = false, camFront = false, ultimo = { t: '', ms: 0 };
 async function toggleCam() {
   if (camOn) { await pararCam(); return; }
+  const lec = $('lector');
+  lec.classList.add('on');                       // visible ANTES de iniciar: la librería mide su ancho
+  await new Promise(r => requestAnimationFrame(() => r()));
   try {
     qr = qr || new Html5Qrcode('lector');
-    await qr.start({ facingMode: camFront ? 'user' : 'environment' }, { fps: 10, qrbox: { width: 230, height: 230 } }, onScan, () => { });
+    await qr.start({ facingMode: camFront ? 'user' : 'environment' },
+      { fps: 10, aspectRatio: 1.0, qrbox: (w, h) => { const m = Math.max(150, Math.floor(Math.min(w, h) * 0.7)); return { width: m, height: m }; } },
+      onScan, () => { });
     camOn = true; $('btnCam').textContent = '⏹ Detener cámara';
-  } catch (e) { toast('No se pudo abrir la cámara: ' + e, 'err'); }
+    lec.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  } catch (e) {
+    lec.classList.remove('on'); camOn = false;
+    const msg = String(e && e.name || e);
+    toast(/NotAllowed|Permission/i.test(msg) ? 'Permiso de cámara denegado. Actívalo en el candado 🔒 junto a la dirección.'
+      : /NotFound|Overconstrained/i.test(msg) ? 'No se encontró una cámara en este equipo.'
+      : 'No se pudo abrir la cámara: ' + msg, 'err');
+  }
 }
 async function pararCam() {
   if (qr && camOn) { try { await qr.stop(); qr.clear(); } catch (e) { } }
   camOn = false; $('btnCam').textContent = '📷 Activar cámara';
+  $('lector').classList.remove('on');
 }
 async function girarCam() { camFront = !camFront; if (camOn) { await pararCam(); await toggleCam(); } }
 function idDesdeTexto(t) {
