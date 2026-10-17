@@ -94,7 +94,7 @@ table.mx{border-collapse:collapse;font-size:12px;min-width:100%}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   body{background:#fff}
-  .top,.tabs,.filtros,#vReg,#vAju,#vVer>.card:first-child,#toast{display:none!important}
+  .top,.tabs,.filtros,#vReg,#vAju,#vAva,#vUsu,#vEst,#vVer>.card:first-child,#toast{display:none!important}
   main{padding:0;max-width:none}
   .card{border:none;padding:0}
   .tablaWrap{overflow:visible}
@@ -111,6 +111,35 @@ details.ref summary{cursor:pointer;font-weight:600}
 details.ref ul{margin:6px 0 0;padding-left:18px}
 .chk{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink)}
 @media (max-width:820px){.editor{grid-template-columns:1fr 1fr}}
+.who{font-size:12px;opacity:.9;text-align:right;line-height:1.3}
+.topr{display:flex;align-items:center;gap:10px}
+/* Avance */
+.av-area{margin-bottom:14px}
+.av-area h4{margin:0 0 8px;color:var(--pri);font-size:14px}
+.av-aula{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
+.av-aula .t{display:flex;justify-content:space-between;gap:8px;font-weight:700;margin-bottom:6px;flex-wrap:wrap}
+.av-aula .t small{font-weight:500;color:var(--mut)}
+.av-comp{display:flex;gap:8px;align-items:flex-start;margin:4px 0;font-size:12px}
+.av-comp>b{min-width:28px;color:var(--pri);padding-top:3px}
+.av-crits{display:flex;flex-wrap:wrap;gap:5px}
+.av-c{border-radius:8px;padding:3px 8px;border:1px solid var(--line);background:#f3f4f7;color:var(--mut);cursor:pointer;font:inherit;font-size:12px}
+.av-c.ok{background:#e3f4ea;border-color:#9fd6b5;color:#0d5c2c}
+.av-c.par{background:#fff4dc;border-color:#f0cf86;color:#7a5200}
+.av-vacio{font-size:12px;color:var(--mut)}
+/* Usuarios */
+table.us{width:100%;border-collapse:collapse;font-size:13px}
+.us th,.us td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+.us th{color:var(--pri);font-size:12px}
+.us .off{color:var(--mut);text-decoration:line-through}
+.uform{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.uform .full{grid-column:1/-1}
+.ckgrid{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+.ckgrid label{flex-direction:row;align-items:center;gap:5px;color:var(--ink);font-weight:500;font-size:13px}
+.aulas-g{display:grid;grid-template-columns:90px 1fr;gap:6px 10px;align-items:center;font-size:13px}
+.aulas-g b{font-size:12px}
+.tag{display:inline-block;font-size:11px;border-radius:6px;padding:1px 6px;background:#eef0f4;margin:1px}
+.tag.adm{background:var(--pri);color:#fff}
+@media (max-width:820px){.uform{grid-template-columns:1fr}.us .hm{display:none}}
 .printhead{display:none;margin-bottom:8px;font-size:12px}
 .printhead b{font-size:14px}
 </style>
@@ -119,13 +148,13 @@ details.ref ul{margin:6px 0 0;padding-left:18px}
 
 <header class="top">
   <div class="brand"><b>Registro de Notas</b><small>I.E.E. "Nuestra Señora de las Mercedes" · Ayacucho</small></div>
-  <span id="estado" class="pill">—</span>
+  <div class="topr"><span id="who" class="who"></span><span id="estado" class="pill">—</span></div>
 </header>
 
 <section id="vLogin" class="card login hidden">
-  <h2>Ingreso del docente</h2>
-  <label>Apellidos y nombres del docente<input id="lgDocente" autocomplete="name"></label>
-  <label id="lgClaveWrap">Clave de acceso<input id="lgClave" type="password"></label>
+  <h2>Ingreso al sistema</h2>
+  <label>Usuario<input id="lgUsuario" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+  <label>Contraseña<input id="lgClave" type="password" autocomplete="current-password"></label>
   <button class="btn pri" id="lgBtn" style="width:100%">Ingresar</button>
   <p id="lgMsg" class="msg"></p>
 </section>
@@ -133,7 +162,10 @@ details.ref ul{margin:6px 0 0;padding-left:18px}
 <main id="app" class="hidden">
   <nav class="tabs">
     <button data-v="vReg" class="on">Registrar notas</button>
+    <button data-v="vAva">Mi avance</button>
     <button data-v="vVer">Ver y exportar</button>
+    <button data-v="vUsu" id="tabUsu" class="hidden">Usuarios</button>
+    <button data-v="vEst" id="tabEst" class="hidden">Estudiantes</button>
     <button data-v="vAju">Ajustes</button>
   </nav>
 
@@ -147,7 +179,7 @@ details.ref ul{margin:6px 0 0;padding-left:18px}
   <!-- ====== REGISTRAR ====== -->
   <section id="vReg" class="vista">
     <div class="card">
-      <h3>1. Competencia</h3><div id="compChips" class="chips"></div>
+      <h3>1. Competencia <span style="font-weight:500;text-transform:none;color:var(--mut)">(aula y área: arriba)</span></h3><div id="compChips" class="chips"></div>
       <div class="critbar"><h3>2. Criterio de evaluación</h3><button class="btn sm" id="btnEditCrit">✏ Editar criterios</button></div>
       <div id="critEditor" class="editor hidden"></div>
       <div id="critChips" class="chips"></div>
@@ -155,7 +187,7 @@ details.ref ul{margin:6px 0 0;padding-left:18px}
     </div>
     <div class="grid2">
       <div class="card">
-        <h3>3. Escanear QR del carnet</h3>
+        <h3>3. Escanear QR del carnet <span style="font-weight:500;text-transform:none;color:var(--mut)">(la cámara se activa al elegir el criterio)</span></h3>
         <div id="lector"></div>
         <div class="row">
           <button class="btn pri" id="btnCam">📷 Activar cámara</button>
@@ -199,19 +231,85 @@ details.ref ul{margin:6px 0 0;padding-left:18px}
     </div>
   </section>
 
+  <!-- ====== MI AVANCE ====== -->
+  <section id="vAva" class="vista hidden">
+    <div class="card">
+      <div class="row wrap">
+        <button class="btn" id="btnAva">⟳ Actualizar</button>
+        <span class="nota" style="margin:0">Periodo según el filtro de arriba. Toca un criterio para ir a registrarlo.
+          <span class="av-c ok" style="cursor:default">completo</span> <span class="av-c par" style="cursor:default">incompleto</span> <span class="av-c" style="cursor:default">sin notas</span></span>
+      </div>
+    </div>
+    <div class="card" id="avance"><p class="nota">Cargando…</p></div>
+  </section>
+
+  <!-- ====== USUARIOS (SUPERADMIN) ====== -->
+  <section id="vUsu" class="vista hidden">
+    <div class="card">
+      <h3 id="uTitulo">Nuevo docente</h3>
+      <div class="uform">
+        <label>Apellidos y nombres<input id="uNombre"></label>
+        <label>Usuario (sin espacios)<input id="uUsuario" autocapitalize="none" spellcheck="false" placeholder="ej. jperez"></label>
+        <label><span id="uClaveLbl">Contraseña</span><input id="uClave" type="text" autocomplete="off"></label>
+        <label>Rol<select id="uRol"><option value="DOCENTE">DOCENTE</option><option value="SUPERADMIN">SUPERADMIN (ve todo)</option></select></label>
+        <label>Estado<select id="uEstado"><option>ACTIVO</option><option>INACTIVO</option></select></label>
+        <div></div>
+        <div class="full" id="uPermisos">
+          <h3>Áreas que enseña</h3>
+          <div class="ckgrid" id="uAreas"></div>
+          <h3 style="margin-top:12px">Aulas</h3>
+          <div class="aulas-g" id="uAulas"></div>
+        </div>
+      </div>
+      <div class="row wrap" style="margin-top:12px">
+        <button class="btn pri" id="uGuardar">Guardar usuario</button>
+        <button class="btn" id="uLimpiar">Nuevo / limpiar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="lhead"><h3>Usuarios registrados</h3><button class="btn sm" id="uRecargar">⟳</button></div>
+      <div id="uLista" style="overflow:auto"></div>
+    </div>
+  </section>
+
+  <!-- ====== ESTUDIANTES (SUPERADMIN) ====== -->
+  <section id="vEst" class="vista hidden">
+    <div class="card">
+      <h3>Registrar estudiante nueva</h3>
+      <div class="uform">
+        <label class="full">Apellidos y nombres (APELLIDOS, NOMBRES)<input id="eNombre" placeholder="QUISPE ROJAS, MARÍA ELENA"></label>
+        <label>Grado<select id="eGrado"></select></label>
+        <label>Sección<select id="eSeccion"></select></label>
+        <label>ID que se asignará<input id="eId" disabled></label>
+      </div>
+      <div class="row"><button class="btn pri" id="eGuardar">Registrar estudiante</button></div>
+      <p class="nota">El ID es la continuación del último ID registrado. Con ese ID se imprime su carnet QR.</p>
+    </div>
+    <div class="card">
+      <h3>Registradas en esta sesión</h3>
+      <div id="eLista" class="nota">Ninguna todavía.</div>
+    </div>
+  </section>
+
   <!-- ====== AJUSTES ====== -->
   <section id="vAju" class="vista hidden">
     <div class="card info" id="infoSesion"></div>
     <div class="card">
-      <h3>Lista de estudiantes</h3>
+      <h3>Datos</h3>
       <div class="row wrap">
-        <button class="btn" id="btnEst">⟳ Descargar lista desde Google Sheets</button>
+        <button class="btn" id="btnEst">⟳ Actualizar lista de estudiantes</button>
         <button class="btn" id="btnSync">⇅ Sincronizar notas pendientes</button>
         <button class="btn" id="btnBackup">⬇ Respaldo de notas (JSON)</button>
       </div>
-      <p class="nota">Modo sin servidor o para pruebas: pega aquí la lista copiada de Excel (ID, ALUMNO, GRADO, SECCION) y pulsa Cargar.</p>
-      <textarea id="txtLista" placeholder="1	ALARCON ENCISO, KENDAL ARIANA	PRIMERO	A"></textarea>
-      <div class="row"><button class="btn pri" id="btnCargarLista">Cargar lista pegada</button></div>
+    </div>
+    <div class="card">
+      <h3>Cambiar mi contraseña</h3>
+      <div class="uform">
+        <label>Contraseña actual<input type="password" id="pwActual" autocomplete="current-password"></label>
+        <label>Nueva contraseña<input type="password" id="pwNueva" autocomplete="new-password"></label>
+        <label>Repetir nueva<input type="password" id="pwNueva2" autocomplete="new-password"></label>
+      </div>
+      <div class="row"><button class="btn pri" id="btnPw">Cambiar contraseña</button></div>
     </div>
     <div class="card">
       <h3>Revisión de la lista</h3>
@@ -276,6 +374,24 @@ const AREAS = [
       'Infiere e interpreta información del texto',
       'Reflexiona y evalúa la forma, el contenido y contexto del texto']],
     ['Escribe diversos tipos de textos en su lengua materna', [
+      'Adecúa el texto a la situación comunicativa',
+      'Organiza y desarrolla las ideas de forma coherente y cohesionada',
+      'Utiliza convenciones del lenguaje escrito de forma pertinente',
+      'Reflexiona y evalúa la forma, el contenido y contexto del texto escrito']]
+  ]},
+  { cod: 'QUE', nombre: 'QUECHUA (LENGUA ORIGINARIA COMO SEGUNDA LENGUA)', comps: [
+    ['Se comunica oralmente en quechua como segunda lengua', [
+      'Obtiene información de textos orales',
+      'Infiere e interpreta información de textos orales',
+      'Adecúa, organiza y desarrolla las ideas de forma coherente y cohesionada',
+      'Utiliza recursos no verbales y paraverbales de forma estratégica',
+      'Interactúa estratégicamente con distintos interlocutores',
+      'Reflexiona y evalúa la forma, el contenido y contexto del texto oral']],
+    ['Lee diversos tipos de textos escritos en quechua como segunda lengua', [
+      'Obtiene información del texto escrito',
+      'Infiere e interpreta información del texto',
+      'Reflexiona y evalúa la forma, el contenido y contexto del texto']],
+    ['Escribe diversos tipos de textos en quechua como segunda lengua', [
       'Adecúa el texto a la situación comunicativa',
       'Organiza y desarrolla las ideas de forma coherente y cohesionada',
       'Utiliza convenciones del lenguaje escrito de forma pertinente',
@@ -399,8 +515,8 @@ const LS = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
 };
 const S = {
-  docente: LS.get('nsmDocente', ''),
-  clave: LS.get('nsmClave', ''),
+  token: LS.get('nsmToken', ''),
+  user: LS.get('nsmUser', null),      // {usuario, nombre, rol, areas[], aulas[]}
   est: LS.get('nsmEst', []),          // [id, nombre, grado, seccion]
   store: LS.get('nsmNotas', {}),      // "periodo|area|id|cod" -> nota
   cola: LS.get('nsmCola', []),        // registros pendientes de enviar
@@ -408,11 +524,17 @@ const S = {
   critCola: LS.get('nsmCritCola', {}),// criterios pendientes de enviar
   editando: false,
   sel: LS.get('nsmSel', { grado: 'PRIMERO', seccion: 'A', area: 'MAT', periodo: CONFIG.PERIODOS[0], comp: 0, crit: 0 }),
-  actual: null, rapida: '', porId: new Map(), dups: new Map()
+  actual: null, rapida: '', porId: new Map(), dups: new Map(), usuarios: []
 };
+const esAdmin = () => !!S.user && S.user.rol === 'SUPERADMIN';
+const miNombre = () => (S.user && S.user.nombre) || '';
 const conServidor = () => !!CONFIG.WEBAPP_URL;
 const guardarLS = () => { LS.set('nsmNotas', S.store); LS.set('nsmCola', S.cola); LS.set('nsmCrit', S.crit); LS.set('nsmCritCola', S.critCola); };
-const pendientes = () => S.cola.length + Object.keys(S.critCola).length;
+const mia = x => !x.u || (S.user && x.u === S.user.usuario);
+const pendientes = () => S.cola.filter(mia).length + Object.values(S.critCola).filter(mia).length;
+// Permisos (el servidor también los verifica)
+function puedeArea(a) { return esAdmin() || S.user.areas.includes('*') || S.user.areas.includes(a); }
+function puedeAula(g, s) { return esAdmin() || S.user.aulas.includes('*') || S.user.aulas.includes(g + '-' + s) || S.user.aulas.includes(g + '-*'); }
 const pad = id => String(id).padStart(4, '0');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const normNom = s => String(s).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z]/g, '');
@@ -443,14 +565,17 @@ function pintarEstado() {
 }
 
 /* ================= SERVIDOR ================= */
-async function apiGet(params) {
-  const q = new URLSearchParams(Object.assign({ clave: S.clave }, params));
-  const r = await fetch(CONFIG.WEBAPP_URL + '?' + q.toString());
-  return r.json();
+async function api(obj) {
+  const r = await fetch(CONFIG.WEBAPP_URL, { method: 'POST', body: JSON.stringify(Object.assign({ token: S.token }, obj)) });
+  const j = await r.json();
+  if (j.relogin) { sesionVencida(j.error); throw new Error(j.error); }
+  return j;
 }
-async function apiPost(obj) {
-  const r = await fetch(CONFIG.WEBAPP_URL, { method: 'POST', body: JSON.stringify(Object.assign({ clave: S.clave, docente: S.docente }, obj)) });
-  return r.json();
+function sesionVencida(msg) {
+  S.token = ''; LS.set('nsmToken', '');
+  pararCam();
+  $('app').classList.add('hidden'); $('vLogin').classList.remove('hidden');
+  $('lgMsg').textContent = msg || 'Vuelve a ingresar.';
 }
 let enviando = false;
 async function sincronizar(manual) {
@@ -458,17 +583,19 @@ async function sincronizar(manual) {
   enviando = true; pintarEstado();
   let ok = false;
   try {
-    const snap = Object.entries(S.critCola);
+    const snap = Object.entries(S.critCola).filter(([k, v]) => mia(v));
     if (snap.length) {
-      const r = await apiPost({ accion: 'guardarCriterios', items: snap.map(x => x[1]) });
+      const r = await api({ accion: 'guardarCriterios', items: snap.map(x => x[1]) });
       if (!r.ok) throw new Error(r.error);
       snap.forEach(([k, v]) => { if (S.critCola[k] === v) delete S.critCola[k]; });
     }
-    if (S.cola.length) {
-      const lote = S.cola.slice(0, 150);
-      const r = await apiPost({ accion: 'guardar', registros: lote });
+    const lote = S.cola.filter(mia).slice(0, 150);
+    if (lote.length) {
+      const r = await api({ accion: 'guardar', registros: lote });
       if (!r.ok) throw new Error(r.error);
-      S.cola.splice(0, lote.length);
+      const env = new Set(lote);
+      S.cola = S.cola.filter(x => !env.has(x));
+      if (r.rechazados) toast(`${r.rechazados} notas no se guardaron: el aula o área no está asignada a tu usuario`, 'err');
     }
     guardarLS(); ok = true;
   } catch (e) {
@@ -481,7 +608,7 @@ async function sincronizar(manual) {
 async function cargarEstudiantes(aviso) {
   if (!conServidor()) return;
   try {
-    const r = await apiGet({ accion: 'estudiantes' });
+    const r = await api({ accion: 'estudiantes' });
     if (!r.ok) throw new Error(r.error);
     S.est = r.data; LS.set('nsmEst', S.est); indexar();
     if (aviso) toast(`Lista actualizada: ${S.est.length} estudiantes`, 'ok');
@@ -491,9 +618,9 @@ async function cargarNotas(grado, seccion, aviso) {
   if (!conServidor() || !navigator.onLine) return;
   const { area, periodo } = S.sel;
   try {
-    const r = await apiGet({ accion: 'notas', area, periodo, grado, seccion: seccion || '' });
+    const r = await api({ accion: 'notas', area, periodo, grado, seccion: seccion || '' });
     if (!r.ok) throw new Error(r.error);
-    const pend = new Set(S.cola.map(x => clave(x.periodo, x.area, x.id, x.cod)));
+    const pend = new Set(S.cola.filter(mia).map(x => clave(x.periodo, x.area, x.id, x.cod)));
     r.data.forEach(f => Object.keys(f.n).forEach(cod => {
       const k = clave(periodo, area, f.id, cod);
       if (pend.has(k)) return;
@@ -523,7 +650,8 @@ function indexar() {
 const areaObj = cod => AREAS.find(a => a.cod === (cod || S.sel.area)) || AREAS[0];
 const clave = (periodo, area, id, cod) => `${periodo}|${area}|${Number(id)}|${cod}`;
 const getNota = (id, cod, area, periodo) => S.store[clave(periodo || S.sel.periodo, area || S.sel.area, id, cod)] || '';
-const seccionesDe = g => [...new Set(S.est.filter(e => e[2] === g).map(e => e[3]))].sort();
+const seccionesTodas = g => [...new Set(S.est.filter(e => e[2] === g).map(e => e[3]))].sort();
+const seccionesDe = g => seccionesTodas(g).filter(s => puedeAula(g, s));
 const alumnosDe = (g, s) => S.est.filter(e => e[2] === g && e[3] === s).sort((a, b) => a[1].localeCompare(b[1], 'es'));
 const alumnosSeccion = () => alumnosDe(S.sel.grado, S.sel.seccion);
 /* ---- Criterios de evaluación (6 por competencia, nombre editable por aula) ---- */
@@ -553,7 +681,7 @@ function guardarCriterios(nombres, todoGrado) {
   secs.forEach(s => {
     const k = claveCrit(periodo, area, grado, s, ci);
     S.crit[k] = nombres.slice();
-    if (conServidor()) S.critCola[k] = { periodo, area, grado, seccion: s, comp: ci + 1, nombres: nombres.slice() };
+    S.critCola[k] = { u: S.user.usuario, periodo, area, grado, seccion: s, comp: ci + 1, nombres: nombres.slice() };
   });
   guardarLS(); sincronizar();
   toast(todoGrado ? `Criterios aplicados a ${secs.length} secciones de ${GCORTO[grado]}` : 'Criterios guardados', 'ok');
@@ -566,7 +694,7 @@ function setNota(id, cod, nota) {
   if (nota) S.store[k] = nota; else delete S.store[k];
   const m = cod.match(/^C(\d+)\.(\d+)$/);
   const criterio = m ? critNombre(+m[1] - 1, +m[2] - 1, e[2], e[3]) : '';
-  if (conServidor()) S.cola.push({ periodo, area, id: Number(id), alumno: e[1], grado: e[2], seccion: e[3], cod, criterio, nota: nota || '' });
+  S.cola.push({ u: S.user.usuario, periodo, area, id: Number(id), alumno: e[1], grado: e[2], seccion: e[3], cod, criterio, nota: nota || '' });
   guardarLS(); pintarEstado(); sincronizar();
 }
 
@@ -576,12 +704,13 @@ function opciones(sel, arr, val) {
   if (arr.some(o => o[0] === val)) sel.value = val;
 }
 function pintarFiltros() {
-  opciones($('fGrado'), GRADOS.map(g => [g, g]), S.sel.grado);
+  opciones($('fGrado'), GRADOS.filter(g => seccionesDe(g).length).map(g => [g, g]), S.sel.grado);
   S.sel.grado = $('fGrado').value;
   const secs = seccionesDe(S.sel.grado);
   opciones($('fSeccion'), secs.map(s => [s, s]), S.sel.seccion);
   S.sel.seccion = $('fSeccion').value;
-  opciones($('fArea'), AREAS.map(a => [a.cod, a.nombre]), S.sel.area);
+  opciones($('fArea'), AREAS.filter(a => puedeArea(a.cod)).map(a => [a.cod, a.nombre]), S.sel.area);
+  S.sel.area = $('fArea').value || S.sel.area;
   opciones($('fPeriodo'), CONFIG.PERIODOS.map(p => [p, p]), S.sel.periodo);
   LS.set('nsmSel', S.sel);
 }
@@ -721,7 +850,7 @@ function nlSug(notas) {
 }
 function pintarTabla() {
   const A = areaObj(), al = alumnosSeccion();
-  $('printHead').innerHTML = `<b>${esc(CONFIG.INSTITUCION)}</b><br>REGISTRO DE CALIFICACIONES — ${esc(A.nombre)} · ${S.sel.grado} "${S.sel.seccion}" · ${S.sel.periodo} ${CONFIG.ANIO} · Docente: ${esc(S.docente)}`;
+  $('printHead').innerHTML = `<b>${esc(CONFIG.INSTITUCION)}</b><br>REGISTRO DE CALIFICACIONES — ${esc(A.nombre)} · ${S.sel.grado} "${S.sel.seccion}" · ${S.sel.periodo} ${CONFIG.ANIO} · Docente: ${esc(miNombre())}`;
   let h1 = '<tr><th rowspan="2">N°</th><th rowspan="2">ID</th><th rowspan="2">APELLIDOS Y NOMBRES</th>';
   let h2 = '<tr>';
   const soloUsados = $('chkUsados').checked;
@@ -774,7 +903,7 @@ function hojaSeccion(wb, grado, seccion) {
   titulo(1, CONFIG.INSTITUCION + ' — ' + CONFIG.LUGAR, 13);
   titulo(2, `REGISTRO DE CALIFICACIONES — ÁREA: ${A.nombre}`, 12);
   titulo(3, `GRADO: ${grado}    SECCIÓN: "${seccion}"    PERIODO: ${periodo}    AÑO: ${CONFIG.ANIO}`, 11);
-  titulo(4, `DOCENTE: ${S.docente}    FECHA DE IMPRESIÓN: ${new Date().toLocaleDateString('es-PE')}`, 10, false);
+  titulo(4, `DOCENTE: ${miNombre()}    FECHA DE IMPRESIÓN: ${new Date().toLocaleDateString('es-PE')}`, 10, false);
 
   // Encabezados
   ['N°', 'ID', 'APELLIDOS Y NOMBRES'].forEach((t, i) => {
@@ -827,7 +956,7 @@ function hojaSeccion(wb, grado, seccion) {
   ws.getCell(r0, 1).value = 'Escala: AD = Logro destacado · A = Logro esperado · B = En proceso · C = En inicio.   NL* = Nivel de logro sugerido de la competencia (promedio de sus criterios: AD=4, A=3, B=2, C=1), referencial.';
   ws.getCell(r0, 1).font = { italic: true, size: 8 };
   ws.getCell(r0 + 4, 3).value = '_______________________________';
-  ws.getCell(r0 + 5, 3).value = 'Firma del docente: ' + S.docente;
+  ws.getCell(r0 + 5, 3).value = 'Firma del docente: ' + miNombre();
   ws.getCell(r0 + 4, 3).alignment = ws.getCell(r0 + 5, 3).alignment = { horizontal: 'center' };
   ws.getCell(r0 + 5, 3).font = { size: 9 };
   return ws;
@@ -868,17 +997,12 @@ async function excelGrado() {
 }
 
 /* ================= AJUSTES ================= */
-function parseLista(txt) {
-  const out = [];
-  txt.split(/\r?\n/).forEach(l => {
-    const m = l.trim().match(/^(\d+)\s+(.+?)\s+(PRIMERO|SEGUNDO|TERCERO|CUARTO|QUINTO)\s+([A-Z])\s*$/i);
-    if (m) out.push([parseInt(m[1], 10), m[2].trim(), m[3].toUpperCase(), m[4].toUpperCase()]);
-  });
-  return out;
-}
 function pintarAjustes() {
-  $('infoSesion').innerHTML = `<b>Docente:</b> ${esc(S.docente)}<br>
-    <b>Modo:</b> ${conServidor() ? 'Conectado a Google Sheets' : 'Local (las notas solo quedan en este equipo)'}<br>
+  const u = S.user;
+  const areas = u.areas.includes('*') || esAdmin() ? 'Todas' : u.areas.map(a => (AREAS.find(x => x.cod === a) || { nombre: a }).nombre).join(', ');
+  const aulas = u.aulas.includes('*') || esAdmin() ? 'Todas' : u.aulas.map(fmtAula).join(', ');
+  $('infoSesion').innerHTML = `<b>${esc(u.nombre)}</b> · usuario <code>${esc(u.usuario)}</code> · ${esc(u.rol)}<br>
+    <b>Áreas:</b> ${esc(areas || '—')}<br><b>Aulas:</b> ${esc(aulas || '—')}<br>
     <b>Estudiantes cargadas:</b> ${S.est.length}<br>
     <b>Datos pendientes de envío:</b> ${pendientes()}`;
   const d = [...S.dups.entries()].filter(([id, otros]) => id < Math.min(...otros));
@@ -887,6 +1011,147 @@ function pintarAjustes() {
       d.map(([id, otros]) => { const e = S.porId.get(id); return `• ${esc(e[1])} — ID ${[id, ...otros].map(x => { const o = S.porId.get(x); return `${pad(x)} (${GCORTO[o[2]]} ${o[3]})`; }).join(' / ')}`; }).join('<br>')
     : 'No se encontraron nombres repetidos.';
 }
+const fmtAula = a => { const [g, s] = a.split('-'); return (GCORTO[g] || g) + ' ' + (s === '*' ? '(todas)' : s); };
+
+/* ================= MI AVANCE ================= */
+async function pintarAvance() {
+  const cont = $('avance');
+  cont.innerHTML = '<p class="nota">Cargando…</p>';
+  let data;
+  try { const r = await api({ accion: 'avance', periodo: S.sel.periodo }); if (!r.ok) throw new Error(r.error); data = r.data; }
+  catch (e) { cont.innerHTML = `<p class="nota">No se pudo cargar: ${esc(e.message)}</p>`; return; }
+  const totalAula = {};
+  S.est.forEach(e => { const k = e[2] + '-' + e[3]; totalAula[k] = (totalAula[k] || 0) + 1; });
+  const aulasAsignadas = [];
+  GRADOS.forEach(g => seccionesDe(g).forEach(s => aulasAsignadas.push(g + '-' + s)));
+  const abiertas = !esAdmin() && !S.user.aulas.includes('*');
+  const orden = a => { const [g, s] = a.split('-'); return GRADOS.indexOf(g) * 100 + s.charCodeAt(0); };
+  let html = `<h3>${esc(S.sel.periodo)}</h3>`;
+  const areas = AREAS.filter(a => puedeArea(a.cod));
+  let algo = false;
+  areas.forEach(A => {
+    const d = data[A.cod] || {};
+    let aulas = abiertas ? aulasAsignadas.slice() : Object.keys(d);
+    aulas = [...new Set(aulas)].filter(a => d[a] || abiertas).sort((x, y) => orden(x) - orden(y));
+    if (!aulas.length) return;
+    algo = true;
+    html += `<div class="av-area"><h4>${esc(A.nombre)}</h4>`;
+    aulas.forEach(aula => {
+      const info = d[aula] || { n: {}, crit: {} }, tot = totalAula[aula] || 0;
+      const [g, s] = aula.split('-');
+      let filas = '', registradas = 0;
+      A.comps.forEach((cp, i) => {
+        const nombres = info.crit[i + 1] || [];
+        let chips = '';
+        for (let k = 0; k < CONFIG.NCRIT; k++) {
+          const cod = `C${i + 1}.${k + 1}`, n = info.n[cod] || 0, nom = String(nombres[k] || '').trim();
+          if (!n && !nom) continue;
+          if (n) registradas++;
+          const cls = n >= tot && tot ? 'ok' : n ? 'par' : '';
+          chips += `<button class="av-c ${cls}" data-ir="${A.cod}|${g}|${s}|${i}|${k}" title="${esc(cp[0])}">C${i + 1}.${k + 1} ${esc(nom || 'Criterio ' + (k + 1))} · ${n}/${tot}</button>`;
+        }
+        filas += `<div class="av-comp"><b>C${i + 1}</b><div class="av-crits">${chips || '<span class="av-vacio">sin criterios registrados</span>'}</div></div>`;
+      });
+      html += `<div class="av-aula"><div class="t"><span>${GCORTO[g] || g} ${esc(s)}</span><small>${registradas} criterio(s) con notas · ${tot} estudiantes</small></div>${filas}</div>`;
+    });
+    html += '</div>';
+  });
+  cont.innerHTML = algo ? html : '<p class="nota">Aún no hay notas registradas en este periodo.</p>';
+}
+
+/* ================= ESTUDIANTES NUEVAS (SUPERADMIN) ================= */
+const eRegistradas = [];
+function formEstudiante() {
+  const g0 = $('eGrado').value || 'PRIMERO';
+  $('eGrado').innerHTML = GRADOS.map(g => `<option ${g === g0 ? 'selected' : ''}>${g}</option>`).join('');
+  pintarSeccionesEst();
+  const max = S.est.reduce((m, e) => Math.max(m, Number(e[0])), 0);
+  $('eId').value = pad(max + 1) + ' (se confirma al guardar)';
+}
+function pintarSeccionesEst() {
+  const s0 = $('eSeccion').value;
+  const ss = seccionesTodas($('eGrado').value);
+  $('eSeccion').innerHTML = ss.map(s => `<option ${s === s0 ? 'selected' : ''}>${s}</option>`).join('');
+}
+async function guardarEstudiante(confirmar) {
+  const datos = { alumno: $('eNombre').value.trim(), grado: $('eGrado').value, seccion: $('eSeccion').value, confirmarDuplicado: !!confirmar };
+  if (datos.alumno.length < 5) { toast('Escribe apellidos y nombres completos', 'err'); return; }
+  $('eGuardar').disabled = true;
+  try {
+    const r = await api({ accion: 'nuevoEstudiante', datos });
+    if (!r.ok && r.duplicado) {
+      $('eGuardar').disabled = false;
+      if (confirm(r.error + '.\n\n¿Es otra estudiante y deseas registrarla de todos modos?')) guardarEstudiante(true);
+      return;
+    }
+    if (!r.ok) throw new Error(r.error);
+    eRegistradas.unshift(r);
+    $('eLista').innerHTML = eRegistradas.map(x => `• <b>ID ${pad(x.id)}</b> — ${esc(x.alumno)} · ${GCORTO[x.grado]} ${esc(x.seccion)}`).join('<br>');
+    toast(`Registrada con ID ${pad(r.id)}`, 'ok');
+    $('eNombre').value = '';
+    await cargarEstudiantes();
+    formEstudiante();
+  } catch (e) { toast(e.message, 'err'); }
+  $('eGuardar').disabled = false;
+}
+
+/* ================= USUARIOS (SUPERADMIN) ================= */
+let uEditando = null;
+function aulasDisponibles() {
+  const out = [];
+  GRADOS.forEach(g => { const ss = seccionesTodas(g); if (ss.length) out.push([g, ss]); });
+  return out;
+}
+function formUsuario(u) {
+  uEditando = u ? u.usuario : null;
+  $('uTitulo').textContent = u ? 'Editar usuario: ' + u.usuario : 'Nuevo docente';
+  $('uNombre').value = u ? u.nombre : '';
+  $('uUsuario').value = u ? u.usuario : ''; $('uUsuario').disabled = !!u;
+  $('uClave').value = ''; $('uClaveLbl').textContent = u ? 'Nueva contraseña (vacío = no cambiar)' : 'Contraseña';
+  $('uRol').value = u ? u.rol : 'DOCENTE';
+  $('uEstado').value = u ? u.estado : 'ACTIVO';
+  const areas = u ? u.areas : [], aulas = u ? u.aulas : [];
+  $('uAreas').innerHTML = `<label><input type="checkbox" data-area="*" ${areas.includes('*') ? 'checked' : ''}> <b>Todas</b></label>` +
+    AREAS.map(a => `<label><input type="checkbox" data-area="${a.cod}" ${areas.includes(a.cod) ? 'checked' : ''}> ${esc(a.nombre)}</label>`).join('');
+  $('uAulas').innerHTML = `<b>Todas</b><div class="ckgrid"><label><input type="checkbox" data-aula="*" ${aulas.includes('*') ? 'checked' : ''}> Todas las aulas del colegio</label></div>` +
+    aulasDisponibles().map(([g, ss]) => `<b>${GCORTO[g]}</b><div class="ckgrid">` +
+      `<label><input type="checkbox" data-aula="${g}-*" ${aulas.includes(g + '-*') ? 'checked' : ''}> todo ${GCORTO[g]}</label>` +
+      ss.map(s => `<label><input type="checkbox" data-aula="${g}-${s}" ${aulas.includes(g + '-' + s) ? 'checked' : ''}> ${s}</label>`).join('') + '</div>').join('');
+  $('uPermisos').classList.toggle('hidden', $('uRol').value === 'SUPERADMIN');
+  if (u) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+async function cargarUsuarios() {
+  try { const r = await api({ accion: 'usuarios' }); if (!r.ok) throw new Error(r.error); S.usuarios = r.data; }
+  catch (e) { toast(e.message, 'err'); return; }
+  pintarUsuarios();
+}
+function pintarUsuarios() {
+  const etiqueta = (arr, f) => arr.includes('*') ? '<span class="tag">todas</span>' : arr.map(x => `<span class="tag">${esc(f(x))}</span>`).join('') || '—';
+  $('uLista').innerHTML = `<table class="us"><thead><tr><th>Docente</th><th>Usuario</th><th class="hm">Áreas</th><th class="hm">Aulas</th><th></th></tr></thead><tbody>` +
+    S.usuarios.map(u => `<tr class="${u.estado === 'INACTIVO' ? 'off' : ''}">
+      <td>${esc(u.nombre)} ${u.rol === 'SUPERADMIN' ? '<span class="tag adm">SUPERADMIN</span>' : ''}${u.estado === 'INACTIVO' ? ' <span class="tag">inactivo</span>' : ''}</td>
+      <td><code>${esc(u.usuario)}</code></td>
+      <td class="hm">${u.rol === 'SUPERADMIN' ? 'todo' : etiqueta(u.areas, a => a)}</td>
+      <td class="hm">${u.rol === 'SUPERADMIN' ? 'todo' : etiqueta(u.aulas, fmtAula)}</td>
+      <td><button class="btn sm" data-edit="${esc(u.usuario)}">Editar</button></td></tr>`).join('') + '</tbody></table>';
+}
+async function guardarUsuarioForm() {
+  const marcados = sel => [...document.querySelectorAll(sel)].filter(i => i.checked).map(i => i.dataset.area || i.dataset.aula);
+  const datos = {
+    nuevo: !uEditando, usuario: $('uUsuario').value.trim().toLowerCase(), nombre: $('uNombre').value.trim(),
+    clave: $('uClave').value.trim(), rol: $('uRol').value, estado: $('uEstado').value,
+    areas: marcados('#uAreas input').join(','), aulas: marcados('#uAulas input').join(',')
+  };
+  if (datos.rol === 'DOCENTE' && (!datos.areas || !datos.aulas)) { toast('Marca al menos un área y un aula', 'err'); return; }
+  $('uGuardar').disabled = true;
+  try {
+    const r = await api({ accion: 'guardarUsuario', datos });
+    if (!r.ok) throw new Error(r.error);
+    toast(`Usuario ${datos.usuario} guardado` + (datos.clave ? ` · contraseña: ${datos.clave}` : ''), 'ok');
+    formUsuario(null); cargarUsuarios();
+  } catch (e) { toast(e.message, 'err'); }
+  $('uGuardar').disabled = false;
+}
 
 /* ================= NAVEGACIÓN ================= */
 function pintarTodo() {
@@ -894,41 +1159,53 @@ function pintarTodo() {
   if (!$('vVer').classList.contains('hidden')) pintarTabla();
   if (!$('vAju').classList.contains('hidden')) pintarAjustes();
   pintarEstado();
+  if (S.user) $('who').innerHTML = `${esc(S.user.nombre)}<br>${esc(S.user.rol)}`;
 }
 function irA(v) {
   document.querySelectorAll('.vista').forEach(s => s.classList.toggle('hidden', s.id !== v));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   if (v !== 'vReg') pararCam();
+  document.querySelector('.filtros').classList.toggle('hidden', v === 'vUsu' || v === 'vAju' || v === 'vEst');
   pintarTodo();
+  if (v === 'vAva') pintarAvance();
+  if (v === 'vUsu') { formUsuario(null); cargarUsuarios(); }
+  if (v === 'vEst') formEstudiante();
 }
 
 async function entrar() {
   $('vLogin').classList.add('hidden'); $('app').classList.remove('hidden');
+  $('tabUsu').classList.toggle('hidden', !esAdmin());
+  $('tabEst').classList.toggle('hidden', !esAdmin());
   indexar();
-  if (conServidor()) { await cargarEstudiantes(); }
+  await cargarEstudiantes();
+  if (!S.token) return;
   pintarFiltros(); pintarTodo();
-  if (!S.est.length) { irA('vAju'); toast('Carga la lista de estudiantes para empezar'); }
-  else cargarNotas(S.sel.grado, S.sel.seccion).then(pintarTodo);
+  if (!$('fArea').value || !$('fSeccion').value) {
+    toast('Tu usuario no tiene áreas o aulas asignadas. Pide al SUPERADMIN que las configure.', 'err');
+  }
+  cargarNotas(S.sel.grado, S.sel.seccion).then(pintarTodo);
   sincronizar();
 }
 
 /* ================= EVENTOS ================= */
 $('lgBtn').onclick = async () => {
-  const doc = $('lgDocente').value.trim().toUpperCase(), cl = $('lgClave').value.trim();
-  if (!doc) { $('lgMsg').textContent = 'Escribe tu nombre.'; return; }
-  if (conServidor()) {
-    $('lgMsg').textContent = 'Verificando…';
-    S.clave = cl;
-    try { const r = await apiGet({ accion: 'ping' }); if (!r.ok) throw new Error(r.error); }
-    catch (e) { $('lgMsg').textContent = e.message || 'No se pudo conectar'; return; }
-  }
-  S.docente = doc; LS.set('nsmDocente', doc); LS.set('nsmClave', S.clave);
-  $('lgMsg').textContent = ''; entrar();
+  const usuario = $('lgUsuario').value.trim().toLowerCase(), clave = $('lgClave').value;
+  if (!usuario || !clave) { $('lgMsg').textContent = 'Escribe tu usuario y contraseña.'; return; }
+  $('lgMsg').textContent = 'Verificando…'; $('lgBtn').disabled = true;
+  try {
+    const r = await api({ accion: 'login', usuario, clave });
+    if (!r.ok) throw new Error(r.error);
+    S.token = r.token; S.user = r.user; LS.set('nsmToken', r.token); LS.set('nsmUser', r.user);
+    $('lgClave').value = ''; $('lgMsg').textContent = '';
+    entrar();
+  } catch (e) { $('lgMsg').textContent = e.message || 'No se pudo conectar'; }
+  $('lgBtn').disabled = false;
 };
+$('lgClave').onkeydown = e => { if (e.key === 'Enter') $('lgBtn').click(); };
 ['fGrado', 'fSeccion', 'fArea', 'fPeriodo'].forEach(id => $(id).addEventListener('change', cambioFiltro));
 document.querySelector('.tabs').onclick = e => { const b = e.target.closest('button'); if (b) irA(b.dataset.v); };
 $('compChips').onclick = e => { const b = e.target.closest('[data-comp]'); if (!b) return; S.sel.comp = +b.dataset.comp; S.sel.crit = 0; LS.set('nsmSel', S.sel); cerrarEditor(); pintarTodo(); };
-$('critChips').onclick = e => { const b = e.target.closest('[data-crit]'); if (!b) return; S.sel.crit = +b.dataset.crit; LS.set('nsmSel', S.sel); pintarTodo(); };
+$('critChips').onclick = e => { const b = e.target.closest('[data-crit]'); if (!b) return; S.sel.crit = +b.dataset.crit; LS.set('nsmSel', S.sel); pintarTodo(); if (!camOn) toggleCam(); };
 $('btnEditCrit').onclick = () => S.editando ? cerrarEditor() : abrirEditor();
 $('critEditor').onclick = e => {
   const b = e.target.closest('[data-acc]'); if (!b) return;
@@ -958,30 +1235,49 @@ $('btnRecargar').onclick = async () => { await cargarNotas(S.sel.grado, S.sel.se
 $('btnXls').onclick = excelSeccion;
 $('btnXlsGrado').onclick = excelGrado;
 $('btnPrint').onclick = () => window.print();
-$('btnEst').onclick = async () => { if (!conServidor()) { toast('Primero configura la URL del Apps Script', 'err'); return; } await cargarEstudiantes(true); pintarFiltros(); pintarTodo(); };
+$('btnEst').onclick = async () => { await cargarEstudiantes(true); pintarFiltros(); pintarTodo(); };
+$('btnPw').onclick = async () => {
+  const a = $('pwActual').value, n = $('pwNueva').value, n2 = $('pwNueva2').value;
+  if (n.length < 4) { toast('La nueva contraseña debe tener al menos 4 caracteres', 'err'); return; }
+  if (n !== n2) { toast('Las contraseñas nuevas no coinciden', 'err'); return; }
+  try {
+    const r = await api({ accion: 'cambiarMiClave', actual: a, nueva: n });
+    if (!r.ok) throw new Error(r.error);
+    ['pwActual', 'pwNueva', 'pwNueva2'].forEach(id => $(id).value = '');
+    toast('Contraseña cambiada', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+};
+$('btnAva').onclick = pintarAvance;
+$('avance').onclick = e => {
+  const b = e.target.closest('[data-ir]'); if (!b) return;
+  const [area, g, s, ci, k] = b.dataset.ir.split('|');
+  Object.assign(S.sel, { area, grado: g, seccion: s, comp: +ci, crit: +k }); LS.set('nsmSel', S.sel);
+  pintarFiltros(); irA('vReg');
+  cargarNotas(g, s).then(pintarTodo);
+};
+$('uGuardar').onclick = guardarUsuarioForm;
+$('eGuardar').onclick = () => guardarEstudiante(false);
+$('eGrado').onchange = pintarSeccionesEst;
+$('uLimpiar').onclick = () => formUsuario(null);
+$('uRecargar').onclick = cargarUsuarios;
+$('uRol').onchange = () => $('uPermisos').classList.toggle('hidden', $('uRol').value === 'SUPERADMIN');
+$('uLista').onclick = e => { const b = e.target.closest('[data-edit]'); if (b) formUsuario(S.usuarios.find(u => u.usuario === b.dataset.edit)); };
 $('btnSync').onclick = () => sincronizar(true);
 $('btnBackup').onclick = () => {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify({ docente: S.docente, fecha: new Date(), notas: S.store, pendientes: S.cola })], { type: 'application/json' }));
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ docente: miNombre(), fecha: new Date(), notas: S.store, pendientes: S.cola })], { type: 'application/json' }));
   a.download = `respaldo_notas_${Date.now()}.json`; a.click();
-};
-$('btnCargarLista').onclick = () => {
-  const l = parseLista($('txtLista').value);
-  if (!l.length) { toast('No se reconoció ninguna fila. Formato: ID  ALUMNO  GRADO  SECCIÓN', 'err'); return; }
-  S.est = l; LS.set('nsmEst', l); indexar(); pintarFiltros(); pintarTodo();
-  toast(`${l.length} estudiantes cargadas`, 'ok'); $('txtLista').value = '';
 };
 $('btnSalir').onclick = () => {
   if (pendientes() && !confirm(`Hay ${pendientes()} datos sin enviar. Se conservarán en este equipo. ¿Cerrar sesión?`)) return;
-  pararCam(); S.docente = ''; LS.set('nsmDocente', ''); location.reload();
+  pararCam(); LS.set('nsmToken', ''); LS.set('nsmUser', null); location.reload();
 };
 window.addEventListener('online', () => sincronizar());
 window.addEventListener('offline', pintarEstado);
 setInterval(() => sincronizar(), 20000);
 
 /* ================= INICIO ================= */
-if (!conServidor()) $('lgClaveWrap').classList.add('hidden');
-if (S.docente) entrar(); else { $('vLogin').classList.remove('hidden'); pintarEstado(); }
+if (S.token && S.user) entrar(); else { $('vLogin').classList.remove('hidden'); pintarEstado(); }
 </script>
 </body>
 </html>
