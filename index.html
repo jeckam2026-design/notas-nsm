@@ -219,8 +219,8 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
     <div class="card">
       <div class="row wrap">
         <button class="btn" id="btnRecargar">⟳ Actualizar desde el servidor</button>
-        <button class="btn pri" id="btnXls">⬇ Excel de esta sección</button>
-        <button class="btn" id="btnXlsGrado">⬇ Excel de todo el grado</button>
+        <button class="btn pri" id="btnReg">⬇ Registro oficial del aula (Excel)</button>
+        <button class="btn" id="btnXls">⬇ Resumen simple del área</button>
         <button class="btn" id="btnPrint">🖨 Imprimir</button>
         <label class="chk"><input type="checkbox" id="chkUsados" checked> Mostrar solo criterios usados</label>
       </div>
@@ -493,21 +493,32 @@ const AREAS = [
       'Aplica habilidades técnicas',
       'Trabaja cooperativamente para lograr objetivos y metas',
       'Evalúa los resultados del proyecto de emprendimiento']]
-  ]},
-  { cod: 'TIC', nombre: 'COMPETENCIA TRANSVERSAL – ENTORNOS VIRTUALES (TIC)', comps: [
-    ['Se desenvuelve en entornos virtuales generados por las TIC', [
-      'Personaliza entornos virtuales',
-      'Gestiona información del entorno virtual',
-      'Interactúa en entornos virtuales',
-      'Crea objetos virtuales en diversos formatos']]
-  ]},
-  { cod: 'AUT', nombre: 'COMPETENCIA TRANSVERSAL – APRENDIZAJE AUTÓNOMO', comps: [
-    ['Gestiona su aprendizaje de manera autónoma', [
-      'Define metas de aprendizaje',
-      'Organiza acciones estratégicas para alcanzar sus metas de aprendizaje',
-      'Monitorea y ajusta su desempeño durante el proceso de aprendizaje']]
   ]}
 ];
+
+/* Competencias transversales: se evalúan dentro de cada área (como en el registro oficial) */
+const TRANSV = [
+  ['Se desenvuelve en entornos virtuales generados por las TIC', [
+    'Personaliza entornos virtuales',
+    'Gestiona información del entorno virtual',
+    'Interactúa en entornos virtuales',
+    'Crea objetos virtuales en diversos formatos']],
+  ['Gestiona su aprendizaje de manera autónoma', [
+    'Define metas de aprendizaje',
+    'Organiza acciones estratégicas para alcanzar sus metas de aprendizaje',
+    'Monitorea y ajusta su desempeño durante el proceso de aprendizaje']]
+];
+AREAS.forEach(A => {
+  A.nb = A.comps.length;
+  TRANSV.forEach(t => { const c = [t[0], t[1]]; c.t = true; A.comps.push(c); });
+});
+// Código de la competencia i dentro del área: C1..C4 (del área) o T1, T2 (transversales)
+const pre = (A, i) => i < A.nb ? 'C' + (i + 1) : 'T' + (i - A.nb + 1);
+const etiquetaComp = (A, i) => i < A.nb ? 'COMPETENCIA ' + (i + 1) : 'COMPETENCIA TRANSVERSAL ' + (i - A.nb + 1);
+function idxDeCod(A, cod) {
+  const m = String(cod).match(/^([CT])(\d+)\.(\d+)$/); if (!m) return null;
+  return { ci: m[1] === 'C' ? +m[2] - 1 : A.nb + +m[2] - 1, k: +m[3] - 1 };
+}
 
 /* ================= ESTADO ================= */
 const $ = id => document.getElementById(id);
@@ -665,13 +676,13 @@ const critNombre = (ci, k, g, s) => nombresCrit(ci, g, s)[k] || `Criterio ${k + 
 function critActual() {
   const A = areaObj(), ci = Math.min(S.sel.comp, A.comps.length - 1);
   const k = Math.min(S.sel.crit || 0, CONFIG.NCRIT - 1);
-  return { cod: `C${ci + 1}.${k + 1}`, comp: A.comps[ci][0], nombre: critNombre(ci, k), ci, k };
+  return { cod: `${pre(A, ci)}.${k + 1}`, pre: pre(A, ci), comp: A.comps[ci][0], nombre: critNombre(ci, k), ci, k };
 }
 // Criterios que aparecen en tabla/Excel: los que tienen alguna nota o un nombre propio
 function critUsados(ci, g, s, alumnos, area, periodo) {
   const nom = nombresCrit(ci, g, s), out = [];
   for (let k = 0; k < CONFIG.NCRIT; k++) {
-    const cod = `C${ci + 1}.${k + 1}`;
+    const cod = `${pre(areaObj(area), ci)}.${k + 1}`;
     if (nom[k] || alumnos.some(e => getNota(e[0], cod, area, periodo))) out.push(k);
   }
   return out.length ? out : [0];
@@ -693,8 +704,8 @@ function setNota(id, cod, nota) {
   const { area, periodo } = S.sel;
   const k = clave(periodo, area, id, cod);
   if (nota) S.store[k] = nota; else delete S.store[k];
-  const m = cod.match(/^C(\d+)\.(\d+)$/);
-  const criterio = m ? critNombre(+m[1] - 1, +m[2] - 1, e[2], e[3]) : '';
+  const ix = idxDeCod(areaObj(), cod);
+  const criterio = ix ? critNombre(ix.ci, ix.k, e[2], e[3]) : '';
   S.cola.push({ u: S.user.usuario, periodo, area, id: Number(id), alumno: e[1], grado: e[2], seccion: e[3], cod, criterio, nota: nota || '' });
   guardarLS(); pintarEstado(); sincronizar();
 }
@@ -730,9 +741,9 @@ function cambioFiltro(e) {
 function pintarChips() {
   const A = areaObj(), c = critActual();
   $('compChips').innerHTML = A.comps.map((cp, i) =>
-    `<button class="chip ${i === c.ci ? 'on' : ''}" data-comp="${i}"><b>C${i + 1}.</b> ${esc(cp[0])}</button>`).join('');
+    `<button class="chip ${i === c.ci ? 'on' : ''}" data-comp="${i}"><b>${pre(A, i)}.</b> ${esc(cp[0])}</button>`).join('');
   $('critChips').innerHTML = Array.from({ length: CONFIG.NCRIT }, (_, k) =>
-    `<button class="chip ${k === c.k ? 'on' : ''}" data-crit="${k}"><b>C${c.ci + 1}.${k + 1}</b> ${esc(critNombre(c.ci, k))}</button>`).join('');
+    `<button class="chip ${k === c.k ? 'on' : ''}" data-crit="${k}"><b>${c.pre}.${k + 1}</b> ${esc(critNombre(c.ci, k))}</button>`).join('');
   $('refCaps').innerHTML = `<summary>Ver capacidades de esta competencia (referencia para redactar criterios)</summary>
     <ul>${A.comps[c.ci][1].map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
   $('rapChips').innerHTML = ['', ...CONFIG.ESCALA].map(n =>
@@ -872,18 +883,18 @@ function pintarTabla() {
     ? critUsados(i, S.sel.grado, S.sel.seccion, al)
     : Array.from({ length: CONFIG.NCRIT }, (_, k) => k));
   A.comps.forEach((cp, i) => {
-    h1 += `<th class="comp" colspan="${cols[i].length + 1}">C${i + 1}. ${esc(cp[0])}</th>`;
-    cols[i].forEach(k => { const nm = critNombre(i, k); h2 += `<th class="rot" title="${esc(nm)}"><div>C${i + 1}.${k + 1} ${esc(nm)}</div></th>`; });
-    h2 += '<th class="rot"><div>NL* C' + (i + 1) + '</div></th>';
+    h1 += `<th class="comp" colspan="${cols[i].length + 1}">${pre(A, i)}. ${esc(cp[0])}</th>`;
+    cols[i].forEach(k => { const nm = critNombre(i, k); h2 += `<th class="rot" title="${esc(nm)}"><div>${pre(A, i)}.${k + 1} ${esc(nm)}</div></th>`; });
+    h2 += '<th class="rot"><div>NL* ' + pre(A, i) + '</div></th>';
   });
   h1 += '</tr>'; h2 += '</tr>';
   const opts = ['', ...CONFIG.ESCALA];
   const filas = al.map((e, r) => {
     let td = `<td>${r + 1}</td><td>${pad(e[0])}</td><td class="nm">${esc(e[1])}</td>`;
     A.comps.forEach((cp, i) => {
-      const todas = Array.from({ length: CONFIG.NCRIT }, (_, k) => getNota(e[0], `C${i + 1}.${k + 1}`));
+      const todas = Array.from({ length: CONFIG.NCRIT }, (_, k) => getNota(e[0], `${pre(A, i)}.${k + 1}`));
       cols[i].forEach(k => {
-        const cod = `C${i + 1}.${k + 1}`, n = todas[k];
+        const cod = `${pre(A, i)}.${k + 1}`, n = todas[k];
         td += `<td><select class="${n}" data-id="${e[0]}" data-cod="${cod}">${opts.map(o => `<option ${o === n ? 'selected' : ''}>${o}</option>`).join('')}</select></td>`;
       });
       const s = nlSug(todas);
@@ -928,9 +939,9 @@ function hojaSeccion(wb, grado, seccion) {
   A.comps.forEach((cp, i) => {
     const ini = col, fin = col + cols[i].length;
     ws.mergeCells(6, ini, 6, fin);
-    ws.getCell(6, ini).value = `COMPETENCIA ${i + 1}: ${cp[0].toUpperCase()}`;
-    cols[i].forEach(k => { ws.getCell(7, col).value = `C${i + 1}.${k + 1} ${critNombre(i, k, grado, seccion).toUpperCase()}`; col++; });
-    ws.getCell(7, col).value = `NL* COMPETENCIA ${i + 1}`;
+    ws.getCell(6, ini).value = `${etiquetaComp(A, i)}: ${cp[0].toUpperCase()}`;
+    cols[i].forEach(k => { ws.getCell(7, col).value = `${pre(A, i)}.${k + 1} ${critNombre(i, k, grado, seccion).toUpperCase()}`; col++; });
+    ws.getCell(7, col).value = `NL* ${pre(A, i)}`;
     ws.getCell(7, col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE3E7' } };
     col++;
   });
@@ -948,7 +959,7 @@ function hojaSeccion(wb, grado, seccion) {
   al.forEach((e, idx) => {
     const fila = [idx + 1, pad(e[0]), e[1]];
     A.comps.forEach((cp, i) => {
-      const todas = Array.from({ length: CONFIG.NCRIT }, (_, k) => getNota(e[0], `C${i + 1}.${k + 1}`, area, periodo));
+      const todas = Array.from({ length: CONFIG.NCRIT }, (_, k) => getNota(e[0], `${pre(A, i)}.${k + 1}`, area, periodo));
       fila.push(...cols[i].map(k => todas[k]), nlSug(todas));
     });
     const row = ws.addRow(fila);
@@ -983,8 +994,8 @@ function hojaLeyenda(wb) {
   ws.addRow(['', `Criterios de ${S.sel.grado} "${S.sel.seccion}" · ${S.sel.periodo}`]).font = { italic: true };
   ws.addRow([]);
   A.comps.forEach((cp, i) => {
-    const r = ws.addRow([`C${i + 1}`, 'COMPETENCIA: ' + cp[0]]); r.font = { bold: true };
-    for (let k = 0; k < CONFIG.NCRIT; k++) ws.addRow([`C${i + 1}.${k + 1}`, critNombre(i, k)]);
+    const r = ws.addRow([`${pre(A, i)}`, 'COMPETENCIA: ' + cp[0]]); r.font = { bold: true };
+    for (let k = 0; k < CONFIG.NCRIT; k++) ws.addRow([`${pre(A, i)}.${k + 1}`, critNombre(i, k)]);
     ws.addRow(['', 'Capacidades (referencia): ' + cp[1].join(' · ')]).font = { size: 8, color: { argb: 'FF667085' } };
     ws.addRow([]);
   });
@@ -1008,6 +1019,85 @@ async function excelGrado() {
   seccionesDe(S.sel.grado).forEach(s => hojaSeccion(wb, S.sel.grado, s));
   hojaLeyenda(wb);
   await descargar(wb, nombreArchivo(GCORTO[S.sel.grado] + '_TODAS'));
+}
+
+/* ---------- Registro oficial (plantilla de la I.E.) ---------- */
+// Hoja de la plantilla para cada área
+const HOJA_AREA = { ART: 'ARTE', QUE: 'QUE', CYT: 'CYT', CCSS: 'CC.SS', COM: 'COM', DPCC: 'DPCC', EF: 'E.FIS', EPT: 'EPT', REL: 'E.REL', ING: 'ING', MAT: 'MAT' };
+// Columnas de cada competencia en la plantilla: [columna inicial, nº de columnas]
+const BLOQUES = { C1: [3, 6], C2: [11, 5], C3: [18, 4], C4: [24, 4], T1: [31, 4], T2: [36, 3] };
+const FILA0 = 10, MAXF = 38;
+async function exportarRegistro() {
+  const { grado, seccion, periodo } = S.sel;
+  const al = alumnosDe(grado, seccion);
+  if (!al.length) { toast('No hay estudiantes en esta aula', 'err'); return; }
+  $('btnReg').disabled = true;
+  toast('Preparando el registro oficial…');
+  try {
+    const [r, resp] = await Promise.all([
+      api({ accion: 'registro', grado, seccion, periodo }),
+      fetch('plantilla_registro.xlsx', { cache: 'no-cache' })
+    ]);
+    if (!r.ok) throw new Error(r.error);
+    if (!resp.ok) throw new Error('No se encontró plantilla_registro.xlsx en el sitio');
+    const data = r.data;
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await resp.arrayBuffer());
+    const avisos = [];
+    if (al.length > MAXF) avisos.push(`El aula tiene ${al.length} estudiantes y el registro admite ${MAXF}.`);
+
+    const datos = wb.worksheets.find(w => w.name.trim() === 'Datos');
+    datos.getCell('D3').value = GCORTO[grado];
+    datos.getCell('D5').value = `"${seccion}"`;
+    for (let i = 0; i < MAXF; i++) datos.getCell(8 + i, 4).value = al[i] ? al[i][1] : null;
+
+    const titulo = `REGISTRO DE EVALUACIÓN NIVEL SECUNDARIA ${periodo} ${CONFIG.ANIO}`;
+    Object.entries(HOJA_AREA).forEach(([cod, hoja]) => {
+      const ws = wb.getWorksheet(hoja); if (!ws) return;
+      const d = data[cod];
+      if (!d) { wb.removeWorksheet(ws.id); return; }       // área no asignada a este usuario
+      const A = areaObj(cod);
+      ws.getCell('C1').value = titulo;
+      ws.getCell('C6').value = periodo;
+      ws.getCell('AE6').value = periodo;
+      ws.getCell('K3').value = d.docente || (esAdmin() ? '' : miNombre());
+      for (let r = FILA0; r < FILA0 + MAXF; r++) ws.getCell(r, 2).numFmt = '0;-0;;@';   // no mostrar 0 en filas vacías
+      ws.views = [{ showGridLines: false, zoomScale: 90, zoomScaleNormal: 90 }];
+      const notas = {}; d.notas.forEach(f => { notas[f.id] = f.n; });
+      const crit = {}; d.criterios.forEach(c => { crit[c.comp] = c.nombres; });
+      A.comps.forEach((cp, i) => {
+        const p = pre(A, i), b = BLOQUES[p]; if (!b) return;
+        const nombres = crit[i + 1] || [];
+        const usados = [];
+        for (let k = 0; k < CONFIG.NCRIT; k++) {
+          const c2 = `${p}.${k + 1}`;
+          if (String(nombres[k] || '').trim() || al.some(e => (notas[e[0]] || {})[c2])) usados.push(k);
+        }
+        if (!usados.length) return;                       // sin criterios: quedan las capacidades de la plantilla
+        if (usados.length > b[1]) avisos.push(`${A.nombre} – ${p}: tiene ${usados.length} criterios y el registro solo ${b[1]} columnas; se omitieron los últimos.`);
+        for (let j = 0; j < b[1]; j++) {
+          const k = usados[j];
+          ws.getCell(9, b[0] + j).value = k === undefined ? '' : (String(nombres[k] || '').trim() || `Criterio ${k + 1}`);
+        }
+        al.slice(0, MAXF).forEach((e, fi) => {
+          const n = notas[e[0]] || {};
+          usados.slice(0, b[1]).forEach((k, j) => { ws.getCell(FILA0 + fi, b[0] + j).value = n[`${p}.${k + 1}`] || null; });
+        });
+      });
+    });
+    // Quitar resultados guardados de las fórmulas: Excel, LibreOffice y WPS recalculan al abrir
+    wb.worksheets.forEach(ws => ws.eachRow({ includeEmpty: false }, row => row.eachCell({ includeEmpty: false }, cell => {
+      const v = cell.value;
+      if (v && typeof v === 'object' && (v.formula || v.sharedFormula)) {
+        cell.value = v.formula ? { formula: v.formula } : { sharedFormula: v.sharedFormula };
+      }
+    })));
+    wb.calcProperties = Object.assign(wb.calcProperties || {}, { fullCalcOnLoad: true });
+    await descargar(wb, `Registro_${GCORTO[grado]}${seccion}_${periodo.replace(/\s+/g, '_')}.xlsx`);
+    toast('Registro descargado', 'ok');
+    if (avisos.length) alert('Registro generado con observaciones:\n\n• ' + avisos.join('\n• '));
+  } catch (e) { toast('No se pudo generar el registro: ' + e.message, 'err'); }
+  $('btnReg').disabled = false;
 }
 
 /* ================= AJUSTES ================= */
@@ -1058,13 +1148,13 @@ async function pintarAvance() {
         const nombres = info.crit[i + 1] || [];
         let chips = '';
         for (let k = 0; k < CONFIG.NCRIT; k++) {
-          const cod = `C${i + 1}.${k + 1}`, n = info.n[cod] || 0, nom = String(nombres[k] || '').trim();
+          const cod = `${pre(A, i)}.${k + 1}`, n = info.n[cod] || 0, nom = String(nombres[k] || '').trim();
           if (!n && !nom) continue;
           if (n) registradas++;
           const cls = n >= tot && tot ? 'ok' : n ? 'par' : '';
-          chips += `<button class="av-c ${cls}" data-ir="${A.cod}|${g}|${s}|${i}|${k}" title="${esc(cp[0])}">C${i + 1}.${k + 1} ${esc(nom || 'Criterio ' + (k + 1))} · ${n}/${tot}</button>`;
+          chips += `<button class="av-c ${cls}" data-ir="${A.cod}|${g}|${s}|${i}|${k}" title="${esc(cp[0])}">${pre(A, i)}.${k + 1} ${esc(nom || 'Criterio ' + (k + 1))} · ${n}/${tot}</button>`;
         }
-        filas += `<div class="av-comp"><b>C${i + 1}</b><div class="av-crits">${chips || '<span class="av-vacio">sin criterios registrados</span>'}</div></div>`;
+        filas += `<div class="av-comp"><b>${pre(A, i)}</b><div class="av-crits">${chips || '<span class="av-vacio">sin criterios registrados</span>'}</div></div>`;
       });
       html += `<div class="av-aula"><div class="t"><span>${GCORTO[g] || g} ${esc(s)}</span><small>${registradas} criterio(s) con notas · ${tot} estudiantes</small></div>${filas}</div>`;
     });
@@ -1247,7 +1337,7 @@ $('tabla').onchange = e => {
 };
 $('btnRecargar').onclick = async () => { await cargarNotas(S.sel.grado, S.sel.seccion, true); pintarTodo(); };
 $('btnXls').onclick = excelSeccion;
-$('btnXlsGrado').onclick = excelGrado;
+$('btnReg').onclick = exportarRegistro;
 $('btnPrint').onclick = () => window.print();
 $('btnEst').onclick = async () => { await cargarEstudiantes(true); pintarFiltros(); pintarTodo(); };
 $('btnPw').onclick = async () => {
