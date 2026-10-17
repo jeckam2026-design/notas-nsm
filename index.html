@@ -219,7 +219,8 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
     <div class="card">
       <div class="row wrap">
         <button class="btn" id="btnRecargar">⟳ Actualizar desde el servidor</button>
-        <button class="btn pri" id="btnReg">⬇ Registro oficial del aula (Excel)</button>
+        <button class="btn pri" id="btnReg">⬇ Registro del área (Excel)</button>
+        <button class="btn hidden" id="btnRegTodas">⬇ Registro de todas las áreas del aula</button>
         <button class="btn" id="btnXls">⬇ Resumen simple del área</button>
         <button class="btn" id="btnPrint">🖨 Imprimir</button>
         <label class="chk"><input type="checkbox" id="chkUsados" checked> Mostrar solo criterios usados</label>
@@ -1027,15 +1028,17 @@ const HOJA_AREA = { ART: 'ARTE', QUE: 'QUE', CYT: 'CYT', CCSS: 'CC.SS', COM: 'CO
 // Columnas de cada competencia en la plantilla: [columna inicial, nº de columnas]
 const BLOQUES = { C1: [3, 6], C2: [11, 5], C3: [18, 4], C4: [24, 4], T1: [31, 4], T2: [36, 3] };
 const FILA0 = 10, MAXF = 38;
-async function exportarRegistro() {
-  const { grado, seccion, periodo } = S.sel;
+async function exportarRegistro(todas) {
+  todas = todas === true && esAdmin();          // todas las áreas: solo SUPERADMIN
+  const { grado, seccion, periodo, area } = S.sel;
+  const btn = todas ? $('btnRegTodas') : $('btnReg');
   const al = alumnosDe(grado, seccion);
   if (!al.length) { toast('No hay estudiantes en esta aula', 'err'); return; }
-  $('btnReg').disabled = true;
-  toast('Preparando el registro oficial…');
+  btn.disabled = true;
+  toast(todas ? 'Preparando el registro de todas las áreas…' : 'Preparando el registro del área…');
   try {
     const [r, resp] = await Promise.all([
-      api({ accion: 'registro', grado, seccion, periodo }),
+      api(todas ? { accion: 'registro', grado, seccion, periodo } : { accion: 'registro', grado, seccion, periodo, area }),
       fetch('plantilla_registro.xlsx', { cache: 'no-cache' })
     ]);
     if (!r.ok) throw new Error(r.error);
@@ -1093,11 +1096,13 @@ async function exportarRegistro() {
       }
     })));
     wb.calcProperties = Object.assign(wb.calcProperties || {}, { fullCalcOnLoad: true });
-    await descargar(wb, `Registro_${GCORTO[grado]}${seccion}_${periodo.replace(/\s+/g, '_')}.xlsx`);
+    if (!todas && !data[area]) throw new Error('No tienes asignada esta área en esta aula');
+    const nomArea = todas ? 'TODAS' : HOJA_AREA[area].replace(/\./g, '');
+    await descargar(wb, `Registro_${nomArea}_${GCORTO[grado]}${seccion}_${periodo.replace(/\s+/g, '_')}.xlsx`);
     toast('Registro descargado', 'ok');
     if (avisos.length) alert('Registro generado con observaciones:\n\n• ' + avisos.join('\n• '));
   } catch (e) { toast('No se pudo generar el registro: ' + e.message, 'err'); }
-  $('btnReg').disabled = false;
+  btn.disabled = false;
 }
 
 /* ================= AJUSTES ================= */
@@ -1280,6 +1285,7 @@ async function entrar() {
   $('vLogin').classList.add('hidden'); $('app').classList.remove('hidden');
   $('tabUsu').classList.toggle('hidden', !esAdmin());
   $('tabEst').classList.toggle('hidden', !esAdmin());
+  $('btnRegTodas').classList.toggle('hidden', !esAdmin());
   indexar();
   await cargarEstudiantes();
   if (!S.token) return;
@@ -1337,7 +1343,8 @@ $('tabla').onchange = e => {
 };
 $('btnRecargar').onclick = async () => { await cargarNotas(S.sel.grado, S.sel.seccion, true); pintarTodo(); };
 $('btnXls').onclick = excelSeccion;
-$('btnReg').onclick = exportarRegistro;
+$('btnReg').onclick = () => exportarRegistro(false);
+$('btnRegTodas').onclick = () => exportarRegistro(true);
 $('btnPrint').onclick = () => window.print();
 $('btnEst').onclick = async () => { await cargarEstudiantes(true); pintarFiltros(); pintarTodo(); };
 $('btnPw').onclick = async () => {
