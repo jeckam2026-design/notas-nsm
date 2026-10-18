@@ -104,7 +104,7 @@ table.mx{border-collapse:collapse;font-size:12px;min-width:100%}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   body{background:#fff}
-  .top,.tabs,.filtros,#vReg,#vAju,#vAva,#vUsu,#vEst,#vVer>.card:first-child,#toast{display:none!important}
+  .top,.tabs,.filtros,#vReg,#vAju,#vAva,#vCon,#vUsu,#vEst,#vVer>.card:first-child,#toast{display:none!important}
   main{padding:0;max-width:none}
   .card{border:none;padding:0}
   .tablaWrap{overflow:visible}
@@ -162,6 +162,25 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
 .dif h4{margin:12px 0 6px;font-size:13px}
 .dif label{flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-weight:500;font-size:13px;margin:3px 0}
 .dif .vacio{font-size:12px;color:var(--mut)}
+#compEstado{margin:2px 0 14px}
+#compEstado .cerrada,#compEstado .abierta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;font-size:13px}
+#compEstado .cerrada{background:#fff4dc;border:1px solid #f0cf86}
+#compEstado .abierta{background:#f6f7fb;border:1px dashed var(--line)}
+.tag.pend{background:#fde4e1;color:#9b1c13;font-weight:700}
+.crow{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+.crow.req{border-left:4px solid var(--B)}
+.crow.rev{border-left-color:var(--C);background:#fffafa}
+.crow .ch{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.crow .ch>b{flex:1 1 260px}
+.crow .cnotas .bd{min-width:30px;padding:2px 4px;font-size:11px}
+.crow .cfin{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.crow .cfin select{padding:4px 6px;font-weight:800}
+@media (max-width:560px){.crow textarea{min-height:170px!important}}
+.crow textarea{margin-top:8px;min-height:84px;font-family:inherit;font-size:14px;line-height:1.4}
+.cinfo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px;font-size:12px}
+.cinfo .cnt{color:var(--mut)}.cinfo .cnt.alto{color:var(--B);font-weight:700}
+.cinfo .warn{color:var(--C);flex:1}
+.av-c.cerr{background:#fff4dc;border-color:#f0cf86;color:#7a5200}
 .printhead{display:none;margin-bottom:8px;font-size:12px}
 .printhead b{font-size:14px}
 </style>
@@ -187,6 +206,7 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
   <nav class="tabs">
     <button data-v="vReg" class="on">Registrar notas</button>
     <button data-v="vAva">Mi avance</button>
+    <button data-v="vCon">Conclusiones</button>
     <button data-v="vVer">Ver y exportar</button>
     <button data-v="vUsu" id="tabUsu" class="hidden">Usuarios</button>
     <button data-v="vEst" id="tabEst" class="hidden">Estudiantes</button>
@@ -204,6 +224,7 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
   <section id="vReg" class="vista">
     <div class="card">
       <h3>1. Competencia <span style="font-weight:500;text-transform:none;color:var(--mut)">(aula y área: arriba)</span></h3><div id="compChips" class="chips"></div>
+      <div id="compEstado"></div>
       <div class="critbar"><h3>2. Criterio de evaluación</h3><button class="btn sm" id="btnEditCrit">✏ Editar criterios</button></div>
       <div id="critEditor" class="editor hidden"></div>
       <div id="critChips" class="chips"></div>
@@ -235,6 +256,16 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
       <div class="lhead"><h3>Lista de la sección</h3><span id="avance"></span><button class="btn sm" id="btnSig">Siguiente sin nota ›</button></div>
       <div id="lista"></div>
     </div>
+  </section>
+
+  <!-- ====== CONCLUSIONES DESCRIPTIVAS ====== -->
+  <section id="vCon" class="vista hidden">
+    <div class="card">
+      <h3>Competencia</h3>
+      <div id="conComp" class="chips"></div>
+      <div id="conEstado" class="row wrap" style="margin-top:12px"></div>
+    </div>
+    <div class="card" id="conTabla"></div>
   </section>
 
   <!-- ====== VER / EXPORTAR ====== -->
@@ -570,7 +601,9 @@ const S = {
   est: LS.get('nsmEst', []),          // [id, nombre, grado, seccion]
   store: LS.get('nsmNotas', {}),      // "periodo|area|id|cod" -> nota
   cola: LS.get('nsmCola', []),        // registros pendientes de enviar
-  crit: LS.get('nsmCrit', {}),        // "periodo|area|grado|seccion|ci" -> [6 nombres]
+  crit: LS.get('nsmCrit', {}),
+  cierres: LS.get('nsmCierres', {}),   // competencias cerradas
+  concl: LS.get('nsmConcl', {}),       // calificativo final y conclusiones        // "periodo|area|grado|seccion|ci" -> [6 nombres]
   critCola: LS.get('nsmCritCola', {}),// criterios pendientes de enviar
   editando: false,
   sel: LS.get('nsmSel', { grado: 'PRIMERO', seccion: 'A', area: 'MAT', periodo: CONFIG.PERIODOS[0], comp: 0, crit: 0 }),
@@ -579,7 +612,7 @@ const S = {
 const esAdmin = () => !!S.user && S.user.rol === 'SUPERADMIN';
 const miNombre = () => (S.user && S.user.nombre) || '';
 const conServidor = () => !!CONFIG.WEBAPP_URL;
-const guardarLS = () => { LS.set('nsmNotas', S.store); LS.set('nsmCola', S.cola); LS.set('nsmCrit', S.crit); LS.set('nsmCritCola', S.critCola); };
+const guardarLS = () => { LS.set('nsmCierres', S.cierres); LS.set('nsmConcl', S.concl); LS.set('nsmNotas', S.store); LS.set('nsmCola', S.cola); LS.set('nsmCrit', S.crit); LS.set('nsmCritCola', S.critCola); };
 const mia = x => !x.u || (S.user && x.u === S.user.usuario);
 const pendientes = () => S.cola.filter(mia).length + Object.values(S.critCola).filter(mia).length;
 // Permisos (el servidor también los verifica)
@@ -680,6 +713,14 @@ async function cargarNotas(grado, seccion, aviso) {
       const k = claveCrit(periodo, area, c.grado, c.seccion, c.comp - 1);
       if (!S.critCola[k]) S.crit[k] = c.nombres;
     });
+    // competencias cerradas y conclusiones del alcance consultado
+    const pref = `${periodo}|${area}|${grado}|${seccion ? seccion + '|' : ''}`;
+    Object.keys(S.cierres).forEach(k => { if (k.startsWith(pref)) delete S.cierres[k]; });
+    (r.cierres || []).forEach(c => { if (c.estado === 'CERRADA') S.cierres[kCierre(periodo, area, c.grado, c.seccion, c.comp)] = true; });
+    (r.concl || []).forEach(c => {
+      const k = kConcl(periodo, area, c.id, c.comp);
+      if (!S.conDirty.has(k)) S.concl[k] = { cs: c.cs, cf: c.cf, txt: c.txt, ed: c.ed, rv: c.rv };
+    });
     guardarLS();
     if (aviso) toast('Notas actualizadas desde el servidor', 'ok');
   } catch (e) { if (aviso) toast('No se pudo actualizar: ' + e.message, 'err'); }
@@ -738,7 +779,9 @@ function guardarCriterios(nombres, todoGrado) {
 }
 
 function setNota(id, cod, nota) {
-  const e = S.porId.get(Number(id)); if (!e) return;
+  const e = S.porId.get(Number(id)); if (!e) return false;
+  const ix0 = idxDeCod(areaObj(), cod);
+  if (ix0 && compCerrada(ix0.ci, e[2], e[3])) { beep(false); toast(`La competencia ${cod.split('.')[0]} está cerrada. Reábrela para cambiar notas.`, 'err'); return false; }
   const { area, periodo } = S.sel;
   const k = clave(periodo, area, id, cod);
   if (nota) S.store[k] = nota; else delete S.store[k];
@@ -746,6 +789,7 @@ function setNota(id, cod, nota) {
   const criterio = ix ? critNombre(ix.ci, ix.k, e[2], e[3]) : '';
   S.cola.push({ u: S.user.usuario, periodo, area, id: Number(id), alumno: e[1], grado: e[2], seccion: e[3], cod, criterio, nota: nota || '' });
   guardarLS(); pintarEstado(); sincronizar();
+  return true;
 }
 
 /* ================= FILTROS ================= */
@@ -779,7 +823,11 @@ function cambioFiltro(e) {
 function pintarChips() {
   const A = areaObj(), c = critActual();
   $('compChips').innerHTML = A.comps.map((cp, i) =>
-    `<button class="chip ${i === c.ci ? 'on' : ''}" data-comp="${i}"><b>${pre(A, i)}.</b> ${esc(cp[0])}</button>`).join('');
+    `<button class="chip ${i === c.ci ? 'on' : ''}" data-comp="${i}"><b>${pre(A, i)}.</b> ${esc(cp[0])}${compCerrada(i) ? ' 🔒' : ''}</button>`).join('');
+  $('compEstado').innerHTML = compCerrada(c.ci)
+    ? `<div class="cerrada">🔒 <b>${c.pre} cerrada</b>: ya no se registran notas en esta competencia.
+         <button class="btn sm pri" data-ir-con="1">📝 Ver conclusiones</button> <button class="btn sm" data-reabrir="1">🔓 Reabrir</button></div>`
+    : `<div class="abierta"><span class="nota" style="margin:0">¿Terminaste de registrar los criterios de ${c.pre}?</span> <button class="btn sm" data-cerrar="1">🔒 Cerrar competencia ${c.pre}</button></div>`;
   $('critChips').innerHTML = Array.from({ length: CONFIG.NCRIT }, (_, k) =>
     `<button class="chip ${k === c.k ? 'on' : ''}" data-crit="${k}"><b>${c.pre}.${k + 1}</b> ${esc(critNombre(c.ci, k))}</button>`).join('');
   $('refCaps').innerHTML = `<summary>Ver capacidades de esta competencia (referencia para redactar criterios)</summary>
@@ -847,9 +895,216 @@ function siguienteSinNota() {
 function asignar(nota) {
   if (!S.actual) return;
   const c = critActual();
-  setNota(S.actual, c.cod, nota);
+  if (!setNota(S.actual, c.cod, nota)) return;
   beep(true);
   pintarFicha(); pintarLista();
+}
+
+/* ================= CIERRE DE COMPETENCIA Y CONCLUSIONES DESCRIPTIVAS ================= */
+const VALN = { AD: 3, A: 2, B: 1, C: 0 }, LETRA = ['C', 'B', 'A', 'AD'];
+const kCierre = (periodo, area, g, s, comp) => `${periodo}|${area}|${g}|${s}|${comp}`;
+const kConcl = (periodo, area, id, comp) => `${periodo}|${area}|${Number(id)}|${comp}`;
+function compCerrada(ci, g, s, area, periodo) {
+  const A = areaObj(area);
+  return !!S.cierres[kCierre(periodo || S.sel.periodo, A.cod, g || S.sel.grado, s || S.sel.seccion, pre(A, ci))];
+}
+const compActualCerrada = () => compCerrada(critActual().ci);
+// Calificativo de la competencia = promedio de sus criterios (AD=3, A=2, B=1, C=0) redondeado, como en el registro
+function califSistema(id, ci, area, periodo) {
+  const A = areaObj(area), p = pre(A, ci), v = [];
+  for (let k = 0; k < CONFIG.NCRIT; k++) { const n = getNota(id, `${p}.${k + 1}`, area, periodo); if (n in VALN) v.push(VALN[n]); }
+  if (!v.length) return '';
+  return LETRA[Math.round(v.reduce((a, b) => a + b, 0) / v.length)];
+}
+const conclDe = (id, ci) => S.concl[kConcl(S.sel.periodo, S.sel.area, id, pre(areaObj(), ci))];
+const califFinal = (id, ci) => { const c = conclDe(id, ci); return c ? c.cf : califSistema(id, ci); };
+
+/* ---- Generador (reglas, sin IA): se basa en el criterio con la nota más baja ---- */
+const INF = { traduce: 'traducir', comunica: 'comunicar', usa: 'usar', argumenta: 'argumentar', modela: 'modelar', representa: 'representar',
+  sustenta: 'sustentar', obtiene: 'obtener', infiere: 'inferir', 'adecúa': 'adecuar', adecua: 'adecuar', utiliza: 'utilizar',
+  'interactúa': 'interactuar', reflexiona: 'reflexionar', organiza: 'organizar', problematiza: 'problematizar', 'diseña': 'diseñar',
+  genera: 'generar', analiza: 'analizar', 'evalúa': 'evaluar', comprende: 'comprender', determina: 'determinar', implementa: 'implementar',
+  interpreta: 'interpretar', elabora: 'elaborar', maneja: 'manejar', toma: 'tomar', valora: 'valorar', autorregula: 'autorregular',
+  vive: 'vivir', construye: 'construir', delibera: 'deliberar', participa: 'participar', expresa: 'expresar', incorpora: 'incorporar',
+  relaciona: 'relacionar', crea: 'crear', percibe: 'percibir', contextualiza: 'contextualizar', explora: 'explorar', aplica: 'aplicar',
+  conoce: 'conocer', cultiva: 'cultivar', transforma: 'transformar', 'actúa': 'actuar', personaliza: 'personalizar', gestiona: 'gestionar',
+  define: 'definir', monitorea: 'monitorear', trabaja: 'trabajar', explica: 'explicar', resuelve: 'resolver', lee: 'leer', escribe: 'escribir',
+  indaga: 'indagar', aprecia: 'apreciar', convive: 'convivir', asume: 'asumir', desenvuelve: 'desenvolver' };
+function aInfinitivo(frase) {
+  const t = String(frase).trim().split(/\s+/);
+  let refl = false;
+  if (t[0] && t[0].toLowerCase() === 'se') { refl = true; t.shift(); }
+  const v = (t[0] || '').toLowerCase(), inf = INF[v];
+  if (!inf) return frase.charAt(0).toLowerCase() + frase.slice(1);
+  t[0] = inf + (refl ? 'se' : '');
+  return t.join(' ').replace(/a sí mismo\b/, 'a sí misma');
+}
+const sinTildes = x => String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const minus1 = x => { x = String(x).trim(); return /^[A-ZÁÉÍÓÚÑ]{2,}\b/.test(x) && x === x.toUpperCase() && x.length > 4 ? x.toLowerCase() : x.charAt(0).toLowerCase() + x.slice(1); };
+const yE = sig => /^(i|hi)(?!e)/i.test(sinTildes(sig)) ? ' e ' : ' y ';   // «intervalos e inecuaciones»
+const enLista = a => a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + yE(a[a.length - 1]) + a[a.length - 1];
+function capacidadPara(caps, critNom, k) {
+  const tk = sinTildes(critNom).split(/[^a-zñ]+/).filter(w => w.length > 3);
+  let mejor = -1, puntos = 0;
+  caps.forEach((c, i) => { const ct = sinTildes(c); const p = tk.filter(w => ct.includes(w.slice(0, Math.max(4, w.length - 2)))).length; if (p > puntos) { puntos = p; mejor = i; } });
+  return caps[mejor > -1 ? mejor : k % caps.length];
+}
+function generarConclusion(id, ci, nivel) {
+  const A = areaObj(), cp = A.comps[ci], p = pre(A, ci), caps = cp[1];
+  const crit = [];
+  for (let k = 0; k < CONFIG.NCRIT; k++) { const n = getNota(id, `${p}.${k + 1}`); if (n in VALN) crit.push({ k, v: VALN[n], nom: minus1(critNombre(ci, k)) }); }
+  const orden = crit.slice().sort((a, b) => a.v - b.v);
+  const minV = orden.length ? orden[0].v : 0;
+  let debiles = orden.filter(c => c.v <= 1);
+  if (!debiles.length) debiles = orden.filter(c => c.v === minV);
+  debiles = debiles.slice(0, 2);
+  const fuertes = orden.filter(c => c.v >= 2 && !debiles.includes(c)).sort((a, b) => b.v - a.v).slice(0, 2);
+  const d = enLista(debiles.map(c => c.nom)) || 'los aprendizajes del periodo', f = enLista(fuertes.map(c => c.nom));
+  const cap1 = aInfinitivo(capacidadPara(caps, debiles[0] ? debiles[0].nom : '', debiles[0] ? debiles[0].k : 0));
+  const otraCap = caps.map(aInfinitivo).find(c => c !== cap1);
+  const comp = cp[0];
+  const variantes = nivel === 'C' ? [
+    `${comp} con ayuda del docente; presenta dificultades en ${d}${f ? `, aunque logra avances en ${f}` : ''}. Requiere acompañamiento permanente para ${cap1}${otraCap ? yE(otraCap) + otraCap : ''}. Se recomienda trabajo guiado y retroalimentación continua.`,
+    `${comp} con ayuda del docente; presenta dificultades en ${d}. Requiere acompañamiento permanente para ${cap1}. Se recomienda trabajo guiado y retroalimentación continua.`,
+    `Con ayuda del docente, presenta dificultades en ${d}. Requiere acompañamiento permanente para ${cap1} y retroalimentación continua.`
+  ] : [
+    f ? `${comp}; muestra avances en ${f}, aunque aún presenta dificultades en ${d}. Necesita fortalecer su capacidad para ${cap1} mediante práctica guiada y retroalimentación oportuna.`
+      : `${comp} con apoyo del docente; muestra avances parciales en ${d}. Necesita fortalecer su capacidad para ${cap1} mediante práctica guiada y retroalimentación oportuna.`,
+    `${comp}; aún presenta dificultades en ${d}. Necesita fortalecer su capacidad para ${cap1} mediante práctica guiada.`,
+    `Muestra avances, aunque aún presenta dificultades en ${d}. Necesita fortalecer su capacidad para ${cap1} con práctica guiada.`
+  ];
+  const t = variantes.find(x => x.length <= 350) || variantes[variantes.length - 1].slice(0, 350);
+  return t.replace(/\s+/g, ' ').trim();
+}
+const JUICIOS = /\b(es|son|está|anda)\s+(muy\s+)?(floj[oa]|desatent[oa]|travies[oa]|perezos[oa]|ocios[oa]|malcriad[oa]|irresponsable|distraíd[oa]|lent[oa]|inquiet[oa]|torpe|mal[oa]|desordenad[oa]|groser[oa])\b|no le interesa|no quiere|no le da la gana/i;
+function avisosConcl(txt) {
+  const a = [];
+  if (/\d/.test(txt)) a.push('tiene números o notas');
+  if (JUICIOS.test(txt)) a.push('parece un juicio sobre la persona');
+  if (txt.trim() && txt.trim().length < 80) a.push('muy corta');
+  return a;
+}
+
+/* ---- Cerrar / reabrir ---- */
+async function cerrarCompetencia() {
+  const { periodo, area, grado, seccion } = S.sel, A = areaObj(), ci = critActual().ci, comp = pre(A, ci);
+  if (!navigator.onLine) { toast('Necesitas internet para cerrar la competencia', 'err'); return; }
+  toast('Enviando notas pendientes…');
+  await esperarSincronizacion();
+  await cargarNotas(grado, seccion);
+  const al = alumnosSeccion();
+  const sinNota = al.filter(e => !califSistema(e[0], ci));
+  const msg = `¿Cerrar ${comp} (${A.comps[ci][0]}) en ${GCORTO[grado]} ${seccion}?\n\n` +
+    `• Ya no se podrán registrar notas en esta competencia (podrás reabrirla).\n` +
+    `• El sistema calculará el calificativo final y generará la conclusión descriptiva para las estudiantes con B o C.` +
+    (sinNota.length ? `\n\n⚠ ${sinNota.length} estudiante(s) no tienen ninguna nota en esta competencia y quedarán sin calificativo.` : '');
+  if (!confirm(msg)) return;
+  const filas = [];
+  al.forEach(e => {
+    const id = e[0], cs = califSistema(id, ci), prev = S.concl[kConcl(periodo, area, id, comp)];
+    if (!cs && !prev) return;
+    let cf = cs, txt = '', ed = false, rv = false;
+    if (prev) {
+      if (prev.cs === cs) { cf = prev.cf; txt = prev.txt; ed = prev.ed; rv = prev.rv; }
+      else if (prev.ed) { txt = prev.txt; ed = true; rv = true; }       // cambió el calificativo: conservar lo escrito pero revisar
+    }
+    if ((cf === 'B' || cf === 'C') && !ed) txt = generarConclusion(id, ci, cf);
+    if (!(cf === 'B' || cf === 'C') && !ed) txt = '';
+    filas.push({ id, alumno: e[1], cs, cf, txt, ed, rv });
+  });
+  try {
+    const r = await api({ accion: 'cerrarComp', periodo, area, grado, seccion, comp, filas });
+    if (!r.ok) throw new Error(r.error);
+    S.cierres[kCierre(periodo, area, grado, seccion, comp)] = true;
+    filas.forEach(f => { S.concl[kConcl(periodo, area, f.id, comp)] = { cs: f.cs, cf: f.cf, txt: f.txt, ed: f.ed, rv: f.rv }; });
+    guardarLS();
+    const nBC = filas.filter(f => f.cf === 'B' || f.cf === 'C').length;
+    toast(`${comp} cerrada. ${nBC} conclusión(es) generada(s) para revisar.`, 'ok');
+    irA('vCon');
+  } catch (e) { toast('No se pudo cerrar: ' + e.message, 'err'); }
+}
+async function reabrirCompetencia() {
+  const { periodo, area, grado, seccion } = S.sel, A = areaObj(), ci = critActual().ci, comp = pre(A, ci);
+  if (S.conDirty.size && !confirm('Tienes cambios sin guardar en las conclusiones. Se guardarán antes de reabrir. ¿Continuar?')) return;
+  if (S.conDirty.size && !(await guardarConclusiones())) return;
+  if (!confirm(`¿Reabrir ${comp} en ${GCORTO[grado]} ${seccion}?\n\nPodrás corregir notas o agregar criterios. Las conclusiones que ya escribiste se conservan; al volver a cerrar se recalcula el calificativo.`)) return;
+  try {
+    const r = await api({ accion: 'reabrirComp', periodo, area, grado, seccion, comp });
+    if (!r.ok) throw new Error(r.error);
+    delete S.cierres[kCierre(periodo, area, grado, seccion, comp)];
+    guardarLS(); toast(`${comp} reabierta: ya puedes registrar notas`, 'ok'); irA('vReg');
+  } catch (e) { toast('No se pudo reabrir: ' + e.message, 'err'); }
+}
+
+/* ---- Pestaña Conclusiones ---- */
+S.conDirty = new Set();
+function pintarConclusiones() {
+  const A = areaObj(), c = critActual(), ci = c.ci, comp = c.pre, { periodo, area } = S.sel;
+  $('conComp').innerHTML = A.comps.map((cp, i) => {
+    const cerr = compCerrada(i);
+    const pend = cerr ? alumnosSeccion().filter(e => { const x = conclDe(e[0], i); return x && (x.cf === 'B' || x.cf === 'C') && (!x.txt.trim() || x.rv); }).length : 0;
+    return `<button class="chip ${i === ci ? 'on' : ''}" data-ccomp="${i}"><b>${pre(A, i)}.</b> ${esc(cp[0])} ${cerr ? '🔒' : '<span class="tag">abierta</span>'}${pend ? ` <span class="tag pend">${pend} pendiente(s)</span>` : ''}</button>`;
+  }).join('');
+  const al = alumnosSeccion();
+  if (!compCerrada(ci)) {
+    $('conEstado').innerHTML = `<p class="nota" style="margin:0">La competencia <b>${comp}</b> aún está <b>abierta</b>. Cuando termines de registrar sus criterios, ciérrala para calcular el calificativo final y generar las conclusiones descriptivas.</p>
+      <button class="btn pri" data-cacc="cerrar">🔒 Cerrar competencia ${comp}</button>`;
+    $('conTabla').innerHTML = '';
+    return;
+  }
+  const filas = al.map(e => ({ e, x: conclDe(e[0], ci) || { cs: '', cf: '', txt: '', ed: false, rv: false } }));
+  const nB = filas.filter(f => f.x.cf === 'B').length, nC = filas.filter(f => f.x.cf === 'C').length;
+  const pend = filas.filter(f => (f.x.cf === 'B' || f.x.cf === 'C') && (!f.x.txt.trim() || f.x.rv)).length;
+  const borr = filas.filter(f => (f.x.cf === 'B' || f.x.cf === 'C') && f.x.txt.trim() && !f.x.ed).length;
+  const solo = $('conSolo') ? $('conSolo').checked : true;
+  $('conEstado').innerHTML = `<span class="nota" style="margin:0">🔒 <b>${comp} cerrada</b> · B: ${nB} · C: ${nC} · ${pend ? `<b style="color:var(--C)">${pend} conclusión(es) por completar o revisar</b>` : '<b style="color:var(--AD)">conclusiones completas</b>'}${borr ? ` · <span title="Generadas por el sistema y aún no editadas por el docente">${borr} borrador(es) sin revisar</span>` : ''}</span>
+    <button class="btn pri" data-cacc="guardar" ${S.conDirty.size ? '' : 'disabled'}>💾 Guardar cambios${S.conDirty.size ? ` (${S.conDirty.size})` : ''}</button>
+    <button class="btn" data-cacc="reabrir">🔓 Reabrir competencia</button>
+    <label class="chk"><input type="checkbox" id="conSolo" ${solo ? 'checked' : ''}> Mostrar solo B y C</label>`;
+  const p = pre(A, ci);
+  const bloques = filas.filter(f => !solo || f.x.cf === 'B' || f.x.cf === 'C').map(({ e, x }) => {
+    const id = e[0], n = al.indexOf(e) + 1, req = x.cf === 'B' || x.cf === 'C';
+    const notas = Array.from({ length: CONFIG.NCRIT }, (_, k) => { const v = getNota(id, `${p}.${k + 1}`); return v ? `<span class="bd ${v}" title="${esc(critNombre(ci, k))}">${v}</span>` : ''; }).join(' ');
+    const av = req ? avisosConcl(x.txt) : [];
+    return `<div class="crow ${req ? 'req' : ''} ${x.rv ? 'rev' : ''}" data-id="${id}">
+      <div class="ch"><b>${n}. ${esc(e[1])}</b>
+        <span class="cnotas">${notas || '<span class="nota">sin notas</span>'}</span>
+        <span class="cfin">Sistema <span class="bd ${x.cs || 'x'}">${x.cs || '—'}</span> → Final
+          <select data-cf="${id}">${['', ...CONFIG.ESCALA].map(o => `<option ${o === x.cf ? 'selected' : ''}>${o}</option>`).join('')}</select></span></div>
+      ${req ? `<textarea data-txt="${id}" maxlength="350" placeholder="Conclusión descriptiva (obligatoria para B y C)">${esc(x.txt)}</textarea>
+        <div class="cinfo"><span class="cnt ${x.txt.length > 300 ? 'alto' : ''}">${x.txt.length}/350</span>
+          ${x.rv ? '<span class="tag pend">revisar: cambió el calificativo</span>' : ''}${x.txt.trim() && !x.ed ? '<span class="tag">borrador del sistema</span>' : ''}${!x.txt.trim() ? '<span class="tag pend">falta</span>' : ''}
+          <span class="warn">${av.length ? '⚠ ' + av.join(' · ') : ''}</span>
+          <button class="btn sm" data-regen="${id}">↻ Regenerar</button></div>`
+        : `<div class="nota" style="margin:4px 0 0">${x.cf ? 'No requiere conclusión (AD / A).' : 'Sin calificativo en esta competencia.'}</div>`}
+    </div>`;
+  });
+  $('conTabla').innerHTML = `<p class="nota" style="margin-top:0">Estructura sugerida: <b>actuación observable</b> (verbo en presente) + <b>capacidades o procesos</b> + <b>lo que necesita fortalecer</b>. Máx. 350 caracteres (SIAGIE), sin números ni juicios sobre la persona. El borrador se basa en el criterio con la nota más baja: revísalo y ajústalo.</p>` +
+    (bloques.join('') || '<p class="nota">No hay estudiantes con B o C en esta competencia.</p>');
+}
+function marcarConcl(id, cambios) {
+  const ci = critActual().ci, k = kConcl(S.sel.periodo, S.sel.area, id, pre(areaObj(), ci));
+  const x = S.concl[k] || { cs: califSistema(id, ci), cf: '', txt: '', ed: false, rv: false };
+  S.concl[k] = Object.assign({}, x, cambios);
+  S.conDirty.add(k); guardarLS();
+  const b = document.querySelector('[data-cacc="guardar"]');
+  if (b) { b.disabled = false; b.textContent = `💾 Guardar cambios (${S.conDirty.size})`; }
+}
+async function guardarConclusiones() {
+  if (!S.conDirty.size) return true;
+  const { periodo, area } = S.sel;
+  const porComp = {};
+  [...S.conDirty].forEach(k => { const [, , id, comp] = k.split('|'); (porComp[comp] = porComp[comp] || []).push(Number(id)); });
+  try {
+    for (const comp of Object.keys(porComp)) {
+      const filas = porComp[comp].map(id => { const e = S.porId.get(id), x = S.concl[kConcl(periodo, area, id, comp)]; return { id, alumno: e ? e[1] : '', cs: x.cs, cf: x.cf, txt: x.txt, ed: x.ed, rv: x.rv }; });
+      const e0 = S.porId.get(porComp[comp][0]);
+      const r = await api({ accion: 'guardarConcl', periodo, area, grado: e0[2], seccion: e0[3], comp, filas });
+      if (!r.ok) throw new Error(r.error);
+      filas.forEach(f => S.conDirty.delete(kConcl(periodo, area, f.id, comp)));
+    }
+    toast('Conclusiones guardadas', 'ok'); pintarConclusiones(); return true;
+  } catch (e) { toast('No se pudo guardar: ' + e.message + '. Tus cambios siguen en este equipo.', 'err'); return false; }
 }
 
 /* ================= ESCÁNER QR ================= */
@@ -915,6 +1170,7 @@ function procesarId(id) {
     toast(`${e[1]} es de ${GCORTO[e[2]]} ${e[3]}, no de ${GCORTO[S.sel.grado]} ${S.sel.seccion}`, 'err');
     return;
   }
+  if (compActualCerrada()) { beep(false); toast(`${critActual().pre} está cerrada. Reábrela para registrar notas.`, 'err'); return; }
   seleccionar(id);
   if (S.rapida) { asignar(S.rapida); toast(`${e[1].split(',')[0]} → ${S.rapida}`, 'ok'); }
   else beep(true);
@@ -952,8 +1208,9 @@ function pintarTabla() {
         const cod = `${pre(A, i)}.${k + 1}`, n = todas[k];
         td += `<td><select class="${n}" data-id="${e[0]}" data-cod="${cod}">${opts.map(o => `<option ${o === n ? 'selected' : ''}>${o}</option>`).join('')}</select></td>`;
       });
-      const s = nlSug(todas);
-      td += `<td class="nl">${s ? `<span class="bd ${s}">${s}</span>` : ''}</td>`;
+      const cerr = compCerrada(i), x = cerr ? conclDe(e[0], i) : null;
+      const s = cerr ? (x ? x.cf : '') : nlSug(todas);
+      td += `<td class="nl">${s ? `<span class="bd ${s}" title="${cerr ? 'Calificativo final (competencia cerrada)' : 'Sugerido'}">${s}${cerr ? '🔒' : ''}</span>` : ''}</td>`;
     });
     return `<tr>${td}</tr>`;
   }).join('');
@@ -1082,6 +1339,8 @@ const HOJA_AREA = { ART: 'ARTE', QUE: 'QUE', CYT: 'CYT', CCSS: 'CC.SS', COM: 'CO
 // Columnas de cada competencia en la plantilla: [columna inicial, nº de columnas]
 const BLOQUES = { C1: [3, 6], C2: [11, 5], C3: [18, 4], C4: [24, 4], T1: [31, 4], T2: [36, 3] };
 const FILA0 = 10, MAXF = 38;
+// Por competencia: [columna NIVEL DE LOGRO, columna numérica oculta que usa el promedio del área, columna CONCLUSIÓN DESCRIPTIVA]
+const COL_NL = { C1: [9, 56, 10], C2: [16, 62, 17], C3: [22, 67, 23], C4: [28, 72, 29], T1: [35, 78, 0], T2: [39, 82, 0] };
 // Espera a que todas las notas pendientes lleguen al servidor (máx. ~25 s)
 async function esperarSincronizacion() {
   for (let i = 0; i < 50 && pendientes() && navigator.onLine; i++) {
@@ -1133,8 +1392,35 @@ async function exportarRegistro(todas) {
       ws.views = [{ showGridLines: false, zoomScale: 90, zoomScaleNormal: 90 }];
       const notas = {}; d.notas.forEach(f => { notas[f.id] = f.n; });
       const crit = {}; d.criterios.forEach(c => { crit[c.comp] = c.nombres; });
+      const cerradas = new Set((d.cierres || []).filter(c => c.estado === 'CERRADA').map(c => c.comp));
+      const concl = {}; (d.concl || []).forEach(c => { concl[c.id + '|' + c.comp] = c; });
       A.comps.forEach((cp, i) => {
         const p = pre(A, i), b = BLOQUES[p]; if (!b) return;
+        // Calificativo final y conclusiones descriptivas (solo competencias cerradas)
+        const tieneNotas = al.some(e => Object.keys(notas[e[0]] || {}).some(c2 => c2.startsWith(p + '.') && notas[e[0]][c2]));
+        if (cerradas.has(p)) {
+          const [cNL, cNum, cCon] = COL_NL[p];
+          let faltan = 0;
+          al.slice(0, MAXF).forEach((e, fi) => {
+            const x = concl[e[0] + '|' + p]; if (!x || !x.cf) return;
+            const fila = FILA0 + fi;
+            ws.getCell(fila, cNL).value = x.cf;                 // el calificativo final (puede estar corregido por el docente)
+            ws.getCell(fila, cNum).value = VALN[x.cf];          // para que la calificación del área use el final
+            if (x.cf === 'B' || x.cf === 'C') {
+              if (!String(x.txt || '').trim()) { faltan++; return; }
+              if (cCon) {
+                const c = ws.getCell(fila, cCon);
+                c.value = x.txt;
+                c.alignment = Object.assign({}, c.alignment || {}, { wrapText: true, vertical: 'middle' });
+              } else {
+                ws.getCell(fila, cNL).note = { texts: [{ text: 'Conclusión descriptiva: ' + x.txt }] };
+              }
+            }
+          });
+          if (faltan) avisos.push(`${A.nombre} – ${p}: faltan ${faltan} conclusión(es) descriptiva(s) de B o C.`);
+        } else if (tieneNotas) {
+          avisos.push(`${A.nombre} – ${p}: la competencia aún está abierta; el registro lleva el calificativo calculado y sin conclusiones.`);
+        }
         const nombres = crit[i + 1] || [];
         const usados = [];
         for (let k = 0; k < CONFIG.NCRIT; k++) {
@@ -1229,6 +1515,8 @@ async function pintarAvance() {
           const cls = n >= tot && tot ? 'ok' : n ? 'par' : '';
           chips += `<button class="av-c ${cls}" data-ir="${A.cod}|${g}|${s}|${i}|${k}" title="${esc(cp[0])}">${pre(A, i)}.${k + 1} ${esc(nom || 'Criterio ' + (k + 1))} · ${n}/${tot}</button>`;
         }
+        const cerr = info.cerr && info.cerr[pre(A, i)], pend = info.pend && info.pend[pre(A, i)];
+        if (cerr) chips += `<button class="av-c cerr" data-con="${A.cod}|${g}|${s}|${i}">🔒 cerrada${pend ? ` · faltan ${pend} conclusión(es)` : ' · conclusiones completas'}</button>`;
         filas += `<div class="av-comp"><b>${pre(A, i)}</b><div class="av-crits">${chips || '<span class="av-vacio">sin criterios registrados</span>'}</div></div>`;
       });
       html += `<div class="av-aula"><div class="t"><span>${GCORTO[g] || g} ${esc(s)}</span><small>${registradas} criterio(s) con notas · ${tot} estudiantes</small></div>${filas}</div>`;
@@ -1455,6 +1743,7 @@ function pintarTodo() {
   pintarChips(); pintarFicha(); pintarLista();
   if (!$('vVer').classList.contains('hidden')) pintarTabla();
   if (!$('vAju').classList.contains('hidden')) pintarAjustes();
+  if (!$('vCon').classList.contains('hidden')) pintarConclusiones();
   pintarEstado();
   if (S.user) $('who').innerHTML = `${esc(S.user.nombre)}<br>${esc(S.user.rol)}`;
 }
@@ -1465,6 +1754,7 @@ function irA(v) {
   document.querySelector('.filtros').classList.toggle('hidden', v === 'vUsu' || v === 'vAju' || v === 'vEst');
   pintarTodo();
   if (v === 'vAva') pintarAvance();
+  if (v === 'vCon') pintarConclusiones();
   if (v === 'vUsu') { formUsuario(null); cargarUsuarios(); }
   if (v === 'vEst') { formEstudiante(); cargarEstAdmin().then(() => { selAulaLista(); pintarListaAula(); }); }
 }
@@ -1548,7 +1838,49 @@ $('btnPw').onclick = async () => {
   } catch (e) { toast(e.message, 'err'); }
 };
 $('btnAva').onclick = pintarAvance;
+$('compEstado').onclick = e => {
+  if (e.target.closest('[data-cerrar]')) cerrarCompetencia();
+  else if (e.target.closest('[data-reabrir]')) reabrirCompetencia();
+  else if (e.target.closest('[data-ir-con]')) irA('vCon');
+};
+$('conComp').onclick = e => { const b = e.target.closest('[data-ccomp]'); if (!b) return; S.sel.comp = +b.dataset.ccomp; S.sel.crit = 0; LS.set('nsmSel', S.sel); pintarTodo(); };
+$('conEstado').onclick = e => {
+  const b = e.target.closest('[data-cacc]'); if (!b) return;
+  if (b.dataset.cacc === 'cerrar') cerrarCompetencia();
+  if (b.dataset.cacc === 'guardar') guardarConclusiones();
+  if (b.dataset.cacc === 'reabrir') reabrirCompetencia();
+};
+$('conEstado').onchange = e => { if (e.target.id === 'conSolo') pintarConclusiones(); };
+$('conTabla').oninput = e => {
+  const t = e.target; if (!t.dataset.txt) return;
+  marcarConcl(Number(t.dataset.txt), { txt: t.value, ed: true, rv: false });
+  const info = t.nextElementSibling, av = avisosConcl(t.value);
+  info.querySelector('.cnt').textContent = `${t.value.length}/350`;
+  info.querySelector('.cnt').classList.toggle('alto', t.value.length > 300);
+  info.querySelector('.warn').textContent = av.length ? '⚠ ' + av.join(' · ') : '';
+};
+$('conTabla').onchange = e => {
+  const t = e.target; if (!t.dataset.cf) return;
+  const id = Number(t.dataset.cf), ci = critActual().ci, x = conclDe(id, ci) || {}, cf = t.value;
+  const cambios = { cf, rv: false };
+  if ((cf === 'B' || cf === 'C') && (!x.txt || !x.ed)) { cambios.txt = generarConclusion(id, ci, cf); cambios.ed = false; }
+  marcarConcl(id, cambios); pintarConclusiones();
+};
+$('conTabla').onclick = e => {
+  const b = e.target.closest('[data-regen]'); if (!b) return;
+  const id = Number(b.dataset.regen), ci = critActual().ci, x = conclDe(id, ci);
+  if (x && x.ed && x.txt.trim() && !confirm('¿Reemplazar tu texto por un borrador nuevo?')) return;
+  marcarConcl(id, { txt: generarConclusion(id, ci, x ? x.cf : 'B'), ed: false, rv: false }); pintarConclusiones();
+};
+window.addEventListener('beforeunload', e => { if (S.conDirty && S.conDirty.size) { e.preventDefault(); e.returnValue = ''; } });
 $('panelAvance').onclick = e => {
+  const c = e.target.closest('[data-con]');
+  if (c) {
+    const [area, g, s, ci] = c.dataset.con.split('|');
+    Object.assign(S.sel, { area, grado: g, seccion: s, comp: +ci, crit: 0 }); LS.set('nsmSel', S.sel);
+    pintarFiltros(); cargarNotas(g, s).then(() => irA('vCon'));
+    return;
+  }
   const b = e.target.closest('[data-ir]'); if (!b) return;
   const [area, g, s, ci, k] = b.dataset.ir.split('|');
   Object.assign(S.sel, { area, grado: g, seccion: s, comp: +ci, crit: +k }); LS.set('nsmSel', S.sel);
