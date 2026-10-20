@@ -104,7 +104,7 @@ table.mx{border-collapse:collapse;font-size:12px;min-width:100%}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   body{background:#fff}
-  .top,.tabs,.filtros,#vReg,#vAju,#vAva,#vCon,#vUsu,#vEst,#vVer>.card:first-child,#toast{display:none!important}
+  .top,.tabs,.filtros,#vReg,#vAju,#vAva,#vAsi,#vCon,#vUsu,#vEst,#vVer>.card:first-child,#toast{display:none!important}
   main{padding:0;max-width:none}
   .card{border:none;padding:0}
   .tablaWrap{overflow:visible}
@@ -181,6 +181,16 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
 .cinfo .cnt{color:var(--mut)}.cinfo .cnt.alto{color:var(--B);font-weight:700}
 .cinfo .warn{color:var(--C);flex:1}
 .av-c.cerr{background:#fff4dc;border-color:#f0cf86;color:#7a5200}
+.asi-lista{margin-top:10px;border-top:1px solid var(--line)}
+.asi-row{display:flex!important;flex-direction:row!important;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--line);cursor:pointer;color:var(--ink)!important;font-size:15px!important;font-weight:500!important}
+.asi-row input{width:22px;height:22px;accent-color:var(--AD);flex:none}
+.asi-row .n{width:24px;color:var(--mut);font-size:12px;text-align:right}
+.asi-row .nm{flex:1}
+.asi-row.falta{background:#fdecea}
+.asi-row.falta .nm{color:var(--C);font-weight:700}
+table.asi td.ap{color:var(--AD);font-weight:700}
+table.asi td.af{background:#fde4e1;color:var(--C);font-weight:800}
+table.asi th{font-size:11px;white-space:nowrap}
 .printhead{display:none;margin-bottom:8px;font-size:12px}
 .printhead b{font-size:14px}
 </style>
@@ -205,6 +215,7 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
 <main id="app" class="hidden">
   <nav class="tabs">
     <button data-v="vReg" class="on">Registrar notas</button>
+    <button data-v="vAsi">Asistencia</button>
     <button data-v="vAva">Mi avance</button>
     <button data-v="vCon">Conclusiones</button>
     <button data-v="vVer">Ver y exportar</button>
@@ -284,6 +295,30 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
     <div class="card tablaWrap">
       <div class="printhead" id="printHead"></div>
       <div id="tabla"></div>
+    </div>
+  </section>
+
+  <!-- ====== ASISTENCIA ====== -->
+  <section id="vAsi" class="vista hidden">
+    <div class="card">
+      <div class="lhead"><h3>Tomar asistencia</h3>
+        <label style="flex-direction:row;align-items:center;gap:8px">Fecha <input type="date" id="asiFecha"></label></div>
+      <p class="nota" style="margin-top:0"><b id="asiTitulo"></b><br><span id="asiInfo"></span></p>
+      <div class="row wrap" style="justify-content:space-between">
+        <span id="asiCont" class="nota" style="margin:0"></span>
+        <span><button class="btn sm" id="asiTodas">✓ Marcar todas</button></span>
+      </div>
+      <div id="asiLista" class="asi-lista"></div>
+      <div class="row"><button class="btn pri" id="btnAsi" style="width:100%;padding:14px;font-size:16px">✅ Registrar asistencia</button></div>
+    </div>
+    <div class="card">
+      <h3>Historial de asistencia</h3>
+      <div class="uform">
+        <label>Desde<input type="date" id="asiDesde"></label>
+        <label>Hasta<input type="date" id="asiHasta"></label>
+        <div class="row wrap" style="align-self:end;margin:0"><button class="btn" id="asiVer">👁 Ver</button><button class="btn pri" id="asiXls">⬇ Excel</button></div>
+      </div>
+      <div id="asiHist" class="tablaWrap" style="margin-top:12px"></div>
     </div>
   </section>
 
@@ -1107,6 +1142,128 @@ async function guardarConclusiones() {
   } catch (e) { toast('No se pudo guardar: ' + e.message + '. Tus cambios siguen en este equipo.', 'err'); return false; }
 }
 
+/* ================= ASISTENCIA POR CLASE ================= */
+const hoyLima = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
+const fmtFecha = f => { const [y, m, d] = f.split('-'); return `${d}/${m}`; };
+const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+const diaSem = f => DIAS[new Date(f + 'T12:00:00').getDay()];
+S.asiCola = LS.get('nsmAsiCola', []);               // registros que no pudieron enviarse (sin internet)
+S.asiMarcas = {};                                    // id -> 'P' | 'F' de la lista en pantalla
+let asiCargada = '';
+async function pintarAsistencia(forzar) {
+  const { grado, seccion, area } = S.sel, fecha = $('asiFecha').value || hoyLima();
+  const al = alumnosSeccion(), clave = `${fecha}|${area}|${grado}|${seccion}`;
+  $('asiTitulo').textContent = `${GCORTO[grado] || grado} ${seccion} · ${areaObj().nombre} · ${diaSem(fecha)} ${fmtFecha(fecha)}`;
+  if (forzar || asiCargada !== clave) {
+    asiCargada = clave;
+    S.asiMarcas = {}; al.forEach(e => { S.asiMarcas[e[0]] = 'P'; });      // por defecto: todas asistieron
+    $('asiInfo').textContent = 'Consultando si ya se registró este día…';
+    try {
+      const r = await api({ accion: 'asistencia', area, grado, seccion, desde: fecha, hasta: fecha });
+      if (!r.ok) throw new Error(r.error);
+      if (r.data.length) {
+        r.data.forEach(x => { if (x.id in S.asiMarcas) S.asiMarcas[x.id] = x.estado; });
+        $('asiInfo').innerHTML = `✔ Ya registrada por <b>${esc(r.data[0].docente)}</b>. Puedes corregirla y volver a registrar.`;
+      } else $('asiInfo').textContent = 'Aún no se registra la asistencia de este día. Desmarca a las estudiantes que faltaron.';
+    } catch (e) { $('asiInfo').textContent = 'Sin conexión: se registrará cuando vuelva internet.'; }
+  }
+  const faltas = al.filter(e => S.asiMarcas[e[0]] === 'F').length;
+  $('asiCont').innerHTML = `<b style="color:var(--AD)">Asistieron: ${al.length - faltas}</b> · <b style="color:var(--C)">Faltaron: ${faltas}</b> · Total: ${al.length}`;
+  $('asiLista').innerHTML = al.map((e, i) => {
+    const p = S.asiMarcas[e[0]] !== 'F';
+    return `<label class="asi-row ${p ? '' : 'falta'}"><input type="checkbox" data-asi="${e[0]}" ${p ? 'checked' : ''}>
+      <span class="n">${i + 1}</span><span class="nm">${esc(e[1])}</span><span class="st ${p ? 'ACTIVO' : 'RETIRADO'}">${p ? 'Asistió' : 'Faltó'}</span></label>`;
+  }).join('') || '<p class="nota">No hay estudiantes en esta aula.</p>';
+}
+async function registrarAsistencia() {
+  const { grado, seccion, area } = S.sel, fecha = $('asiFecha').value || hoyLima();
+  if (fecha > hoyLima()) { toast('No se puede registrar una fecha futura', 'err'); return; }
+  const lista = alumnosSeccion().map(e => ({ id: e[0], alumno: e[1], estado: S.asiMarcas[e[0]] || 'P' }));
+  const faltas = lista.filter(x => x.estado === 'F');
+  if (!confirm(`Registrar asistencia de ${GCORTO[grado]} ${seccion} – ${areaObj().nombre} (${fmtFecha(fecha)}):\n\nAsistieron: ${lista.length - faltas.length}\nFaltaron: ${faltas.length}${faltas.length ? '\n\n' + faltas.map(x => '• ' + x.alumno).join('\n') : ''}`)) return;
+  const reg = { u: S.user.usuario, fecha, area, grado, seccion, lista };
+  $('btnAsi').disabled = true;
+  try {
+    const r = await api(Object.assign({ accion: 'guardarAsistencia' }, reg));
+    if (!r.ok) throw new Error(r.error);
+    toast(`Asistencia registrada: ${r.total - r.faltas} asistieron, ${r.faltas} faltaron`, 'ok');
+    $('asiInfo').innerHTML = `✔ Registrada. Puedes corregirla y volver a registrar.`;
+  } catch (e) {
+    if (!navigator.onLine || /fetch|network/i.test(e.message)) {
+      S.asiCola = S.asiCola.filter(x => !(x.fecha === fecha && x.area === area && x.grado === grado && x.seccion === seccion));
+      S.asiCola.push(reg); LS.set('nsmAsiCola', S.asiCola);
+      toast('Sin internet: la asistencia quedó guardada en este equipo y se enviará sola', 'err');
+    } else toast('No se pudo registrar: ' + e.message, 'err');
+  }
+  $('btnAsi').disabled = false;
+}
+async function enviarAsistenciaPendiente() {
+  if (!S.token || !navigator.onLine || !S.asiCola.length) return;
+  for (const reg of S.asiCola.filter(mia)) {
+    try { const r = await api(Object.assign({ accion: 'guardarAsistencia' }, reg)); if (r.ok) S.asiCola = S.asiCola.filter(x => x !== reg); }
+    catch (e) { break; }
+  }
+  LS.set('nsmAsiCola', S.asiCola);
+}
+// Historial: estudiantes × fechas
+let asiHist = null;
+async function verHistorial() {
+  const { grado, seccion, area } = S.sel, desde = $('asiDesde').value, hasta = $('asiHasta').value;
+  $('asiHist').innerHTML = '<p class="nota">Cargando…</p>';
+  try {
+    const r = await api({ accion: 'asistencia', area, grado, seccion, desde, hasta });
+    if (!r.ok) throw new Error(r.error);
+    const fechas = [...new Set(r.data.map(x => x.fecha))].sort();
+    const m = {}; r.data.forEach(x => { m[x.id + '|' + x.fecha] = x.estado; });
+    const al = alumnosSeccion();
+    asiHist = { fechas, m, al, grado, seccion, area, desde, hasta };
+    if (!fechas.length) { $('asiHist').innerHTML = '<p class="nota">No hay asistencias registradas en ese rango.</p>'; return; }
+    const filas = al.map((e, i) => {
+      let f = 0, t = 0;
+      const tds = fechas.map(fe => { const v = m[e[0] + '|' + fe]; if (v) t++; if (v === 'F') f++; return `<td class="${v === 'F' ? 'af' : v === 'P' ? 'ap' : ''}">${v === 'F' ? '✗' : v === 'P' ? '✓' : ''}</td>`; }).join('');
+      const pct = t ? Math.round((t - f) * 100 / t) : '';
+      return `<tr><td>${i + 1}</td><td class="nm">${esc(e[1])}</td>${tds}<td><b>${f}</b></td><td class="${pct !== '' && pct < 70 ? 'af' : ''}">${pct === '' ? '' : pct + '%'}</td></tr>`;
+    }).join('');
+    $('asiHist').innerHTML = `<table class="mx asi"><thead><tr><th>N°</th><th>APELLIDOS Y NOMBRES</th>${fechas.map(f => `<th>${diaSem(f)}<br>${fmtFecha(f)}</th>`).join('')}<th>Faltas</th><th>% Asist.</th></tr></thead><tbody>${filas}</tbody></table>`;
+  } catch (e) { $('asiHist').innerHTML = `<p class="nota">No se pudo cargar: ${esc(e.message)}</p>`; }
+}
+async function excelAsistencia() {
+  if (!asiHist || !asiHist.fechas.length) { await verHistorial(); if (!asiHist || !asiHist.fechas.length) return; }
+  const { fechas, m, al, grado, seccion, area, desde, hasta } = asiHist, A = areaObj(area);
+  const wb = new ExcelJS.Workbook(); wb.creator = 'JECKAM Academy';
+  const ws = wb.addWorksheet(`Asistencia ${GCORTO[grado]}${seccion}`, { pageSetup: { paperSize: 9, orientation: fechas.length > 12 ? 'landscape' : 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 } }, views: [{ state: 'frozen', xSplit: 2, ySplit: 6 }] });
+  const nc = 2 + fechas.length + 2;
+  const tit = (r, t, sz, b) => { ws.mergeCells(r, 1, r, nc); const c = ws.getCell(r, 1); c.value = t; c.font = { bold: b !== false, size: sz || 11 }; c.alignment = { horizontal: 'center' }; };
+  tit(1, CONFIG.INSTITUCION + ' — ' + CONFIG.LUGAR, 13);
+  tit(2, `REGISTRO DE ASISTENCIA — ${A.nombre}`, 12);
+  tit(3, `GRADO: ${grado}   SECCIÓN: "${seccion}"   DEL ${desde.split('-').reverse().join('/')} AL ${hasta.split('-').reverse().join('/')}`, 11);
+  tit(4, `DOCENTE: ${miNombre()}`, 10, false);
+  ws.getColumn(1).width = 5; ws.getColumn(2).width = 40;
+  for (let c = 3; c <= nc; c++) ws.getColumn(c).width = c > 2 + fechas.length ? 9 : 6.5;
+  const head = ws.getRow(6);
+  head.values = ['N°', 'APELLIDOS Y NOMBRES', ...fechas.map(f => `${diaSem(f)}\n${fmtFecha(f)}`), 'FALTAS', '% ASIST.'];
+  head.height = 32;
+  const borde = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+  head.eachCell(c => { c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2A9E' } }; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.border = borde; });
+  al.forEach((e, i) => {
+    let f = 0, t = 0;
+    const vals = fechas.map(fe => { const v = m[e[0] + '|' + fe]; if (v) t++; if (v === 'F') f++; return v === 'F' ? 'F' : v === 'P' ? '•' : ''; });
+    const row = ws.addRow([i + 1, e[1], ...vals, f, t ? (t - f) / t : '']);
+    row.eachCell({ includeEmpty: true }, (c, col) => {
+      if (col > nc) return;
+      c.border = borde; c.font = { size: 9 }; c.alignment = { horizontal: col === 2 ? 'left' : 'center', vertical: 'middle' };
+      if (c.value === 'F') { c.font = { size: 9, bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0392B' } }; }
+      if (col === nc) c.numFmt = '0%';
+    });
+  });
+  const r0 = ws.rowCount + 2;
+  ws.getCell(r0, 2).value = 'Leyenda: • asistió   F faltó   (vacío: sin registro ese día)';
+  ws.getCell(r0, 2).font = { italic: true, size: 8 };
+  ws.getCell(r0 + 4, 2).value = '_______________________________'; ws.getCell(r0 + 5, 2).value = 'Firma del docente: ' + miNombre();
+  ws.getCell(r0 + 4, 2).alignment = ws.getCell(r0 + 5, 2).alignment = { horizontal: 'center' };
+  await descargar(wb, `Asistencia_${A.cod}_${GCORTO[grado]}${seccion}_${desde}_a_${hasta}.xlsx`);
+}
+
 /* ================= ESCÁNER QR ================= */
 let qr = null, camOn = false, camFront = false, ultimo = { t: '', ms: 0 };
 async function toggleCam() {
@@ -1744,6 +1901,7 @@ function pintarTodo() {
   if (!$('vVer').classList.contains('hidden')) pintarTabla();
   if (!$('vAju').classList.contains('hidden')) pintarAjustes();
   if (!$('vCon').classList.contains('hidden')) pintarConclusiones();
+  if (!$('vAsi').classList.contains('hidden') && $('asiFecha').value) pintarAsistencia();
   pintarEstado();
   if (S.user) $('who').innerHTML = `${esc(S.user.nombre)}<br>${esc(S.user.rol)}`;
 }
@@ -1754,6 +1912,7 @@ function irA(v) {
   document.querySelector('.filtros').classList.toggle('hidden', v === 'vUsu' || v === 'vAju' || v === 'vEst');
   pintarTodo();
   if (v === 'vAva') pintarAvance();
+  if (v === 'vAsi') { if (!$('asiFecha').value) $('asiFecha').value = hoyLima(); $('asiFecha').max = hoyLima(); if (!$('asiDesde').value) { $('asiDesde').value = hoyLima().slice(0, 8) + '01'; $('asiHasta').value = hoyLima(); } pintarAsistencia(); }
   if (v === 'vCon') pintarConclusiones();
   if (v === 'vUsu') { formUsuario(null); cargarUsuarios(); }
   if (v === 'vEst') { formEstudiante(); cargarEstAdmin().then(() => { selAulaLista(); pintarListaAula(); }); }
@@ -1838,6 +1997,12 @@ $('btnPw').onclick = async () => {
   } catch (e) { toast(e.message, 'err'); }
 };
 $('btnAva').onclick = pintarAvance;
+$('asiLista').onchange = e => { const c = e.target; if (!c.dataset.asi) return; S.asiMarcas[c.dataset.asi] = c.checked ? 'P' : 'F'; pintarAsistencia(); };
+$('asiTodas').onclick = () => { Object.keys(S.asiMarcas).forEach(k => { S.asiMarcas[k] = 'P'; }); pintarAsistencia(); };
+$('asiFecha').onchange = () => pintarAsistencia(true);
+$('btnAsi').onclick = registrarAsistencia;
+$('asiVer').onclick = verHistorial;
+$('asiXls').onclick = excelAsistencia;
 $('compEstado').onclick = e => {
   if (e.target.closest('[data-cerrar]')) cerrarCompetencia();
   else if (e.target.closest('[data-reabrir]')) reabrirCompetencia();
@@ -1914,7 +2079,7 @@ $('btnSalir').onclick = () => {
 };
 window.addEventListener('online', () => sincronizar());
 window.addEventListener('offline', pintarEstado);
-setInterval(() => sincronizar(), 20000);
+setInterval(() => { sincronizar(); enviarAsistenciaPendiente(); }, 20000);
 setInterval(() => refrescarLista(), 5 * 60000);                 // lista de estudiantes al día
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refrescarLista(); });
 
