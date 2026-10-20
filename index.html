@@ -191,6 +191,13 @@ table.us{width:100%;border-collapse:collapse;font-size:13px}
 table.asi td.ap{color:var(--AD);font-weight:700}
 table.asi td.af{background:#fde4e1;color:var(--C);font-weight:800}
 table.asi th{font-size:11px;white-space:nowrap}
+.asig-area{border:1px solid var(--line);border-radius:10px;margin-bottom:6px;overflow:hidden}
+.asig-area .asig-tit{flex-direction:row!important;align-items:center;gap:8px;padding:9px 10px;color:var(--ink)!important;font-size:14px!important;cursor:pointer;background:#fafbfe}
+.asig-area .asig-res{font-weight:500;color:var(--mut);font-size:12px}
+.asig-area .asig-aulas{display:none;padding:10px 12px;border-top:1px solid var(--line)}
+.asig-area.on{border-color:var(--pri)}
+.asig-area.on .asig-tit{background:var(--soft)}
+.asig-area.on .asig-aulas{display:grid}
 .printhead{display:none;margin-bottom:8px;font-size:12px}
 .printhead b{font-size:14px}
 </style>
@@ -346,10 +353,9 @@ table.asi th{font-size:11px;white-space:nowrap}
         <label>Estado<select id="uEstado"><option>ACTIVO</option><option>INACTIVO</option></select></label>
         <div></div>
         <div class="full" id="uPermisos">
-          <h3>Áreas que enseña</h3>
-          <div class="ckgrid" id="uAreas"></div>
-          <h3 style="margin-top:12px">Aulas</h3>
-          <div class="aulas-g" id="uAulas"></div>
+          <h3>Áreas y aulas que enseña</h3>
+          <p class="nota" style="margin-top:0">Marca cada área y, debajo, solo los grados y secciones donde la enseña.</p>
+          <div id="uAsig"></div>
         </div>
       </div>
       <div class="row wrap" style="margin-top:12px">
@@ -651,8 +657,20 @@ const guardarLS = () => { LS.set('nsmCierres', S.cierres); LS.set('nsmConcl', S.
 const mia = x => !x.u || (S.user && x.u === S.user.usuario);
 const pendientes = () => S.cola.filter(mia).length + Object.values(S.critCola).filter(mia).length;
 // Permisos (el servidor también los verifica)
-function puedeArea(a) { return esAdmin() || S.user.areas.includes('*') || S.user.areas.includes(a); }
-function puedeAula(g, s) { return esAdmin() || S.user.aulas.includes('*') || S.user.aulas.includes(g + '-' + s) || S.user.aulas.includes(g + '-*'); }
+// Asignación por área: { MAT: ['SEGUNDO-B','SEGUNDO-C'], QUE: ['SEGUNDO-E'] }
+function asigU() {
+  const u = S.user || {};
+  if (u.asig && Object.keys(u.asig).length) return u.asig;
+  const o = {}, ar = u.areas || [], au = u.aulas || [];     // sesiones antiguas
+  (ar.includes('*') ? AREAS.map(a => a.cod) : ar).forEach(a => { o[a] = au.slice(); });
+  return o;
+}
+function puedeArea(a) { return esAdmin() || !!asigU()[a]; }
+function puedeAula(g, s, area) {
+  if (esAdmin()) return true;
+  const l = asigU()[area || S.sel.area] || [];
+  return l.includes('*') || l.includes(g + '-' + s) || l.includes(g + '-*');
+}
 const pad = id => String(id).padStart(4, '0');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const normNom = s => String(s).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z]/g, '');
@@ -777,7 +795,7 @@ const areaObj = cod => AREAS.find(a => a.cod === (cod || S.sel.area)) || AREAS[0
 const clave = (periodo, area, id, cod) => `${periodo}|${area}|${Number(id)}|${cod}`;
 const getNota = (id, cod, area, periodo) => S.store[clave(periodo || S.sel.periodo, area || S.sel.area, id, cod)] || '';
 const seccionesTodas = g => [...new Set(S.est.filter(e => e[2] === g).map(e => e[3]))].sort();
-const seccionesDe = g => seccionesTodas(g).filter(s => puedeAula(g, s));
+const seccionesDe = (g, area) => seccionesTodas(g).filter(s => puedeAula(g, s, area));
 const alumnosDe = (g, s) => S.est.filter(e => e[2] === g && e[3] === s).sort((a, b) => a[1].localeCompare(b[1], 'es'));
 const alumnosSeccion = () => alumnosDe(S.sel.grado, S.sel.seccion);
 /* ---- Criterios de evaluación (6 por competencia, nombre editable por aula) ---- */
@@ -833,13 +851,14 @@ function opciones(sel, arr, val) {
   if (arr.some(o => o[0] === val)) sel.value = val;
 }
 function pintarFiltros() {
+  // Primero el área: cada área tiene sus propios grados y secciones
+  opciones($('fArea'), AREAS.filter(a => puedeArea(a.cod)).map(a => [a.cod, a.nombre]), S.sel.area);
+  S.sel.area = $('fArea').value || S.sel.area;
   opciones($('fGrado'), GRADOS.filter(g => seccionesDe(g).length).map(g => [g, g]), S.sel.grado);
   S.sel.grado = $('fGrado').value;
   const secs = seccionesDe(S.sel.grado);
   opciones($('fSeccion'), secs.map(s => [s, s]), S.sel.seccion);
   S.sel.seccion = $('fSeccion').value;
-  opciones($('fArea'), AREAS.filter(a => puedeArea(a.cod)).map(a => [a.cod, a.nombre]), S.sel.area);
-  S.sel.area = $('fArea').value || S.sel.area;
   opciones($('fPeriodo'), CONFIG.PERIODOS.map(p => [p, p]), S.sel.periodo);
   LS.set('nsmSel', S.sel);
 }
@@ -1621,10 +1640,9 @@ async function exportarRegistro(todas) {
 /* ================= AJUSTES ================= */
 function pintarAjustes() {
   const u = S.user;
-  const areas = u.areas.includes('*') || esAdmin() ? 'Todas' : u.areas.map(a => (AREAS.find(x => x.cod === a) || { nombre: a }).nombre).join(', ');
-  const aulas = u.aulas.includes('*') || esAdmin() ? 'Todas' : u.aulas.map(fmtAula).join(', ');
+  const asig = esAdmin() ? '<b>Todas las áreas y aulas</b>' : textoAsig(asigU()) || '—';
   $('infoSesion').innerHTML = `<b>${esc(u.nombre)}</b> · usuario <code>${esc(u.usuario)}</code> · ${esc(u.rol)}<br>
-    <b>Áreas:</b> ${esc(areas || '—')}<br><b>Aulas:</b> ${esc(aulas || '—')}<br>
+    <b>Mis áreas y aulas:</b> ${asig}<br>
     <b>Estudiantes cargadas:</b> ${S.est.length}<br>
     <b>Datos pendientes de envío:</b> ${pendientes()}`;
   const d = [...S.dups.entries()].filter(([id, otros]) => id < Math.min(...otros));
@@ -1634,6 +1652,16 @@ function pintarAjustes() {
     : 'No se encontraron nombres repetidos.';
 }
 const fmtAula = a => { const [g, s] = a.split('-'); return (GCORTO[g] || g) + ' ' + (s === '*' ? '(todas)' : s); };
+// "MATEMÁTICA: 2do B, C, D · QUECHUA: 2do E"
+function textoAsig(asig) {
+  return Object.keys(asig).map(a => {
+    const l = asig[a];
+    if (l.includes('*')) return `<b>${esc(areaObj(a).nombre)}</b>: todas`;
+    const porG = {};
+    l.forEach(x => { const [g, s] = x.split('-'); (porG[g] = porG[g] || []).push(s === '*' ? 'todas' : s); });
+    return `<b>${esc(areaObj(a).nombre)}</b>: ` + GRADOS.filter(g => porG[g]).map(g => `${GCORTO[g]} ${porG[g].sort().join(', ')}`).join(' · ');
+  }).join('<br>');
+}
 
 /* ================= MI AVANCE ================= */
 async function pintarAvance() {
@@ -1644,16 +1672,15 @@ async function pintarAvance() {
   catch (e) { cont.innerHTML = `<p class="nota">No se pudo cargar: ${esc(e.message)}</p>`; return; }
   const totalAula = {};
   S.est.forEach(e => { const k = e[2] + '-' + e[3]; totalAula[k] = (totalAula[k] || 0) + 1; });
-  const aulasAsignadas = [];
-  GRADOS.forEach(g => seccionesDe(g).forEach(s => aulasAsignadas.push(g + '-' + s)));
-  const abiertas = !esAdmin() && !S.user.aulas.includes('*');
+  const aulasDe = cod => { const l = []; GRADOS.forEach(g => seccionesDe(g, cod).forEach(s => l.push(g + '-' + s))); return l; };
   const orden = a => { const [g, s] = a.split('-'); return GRADOS.indexOf(g) * 100 + s.charCodeAt(0); };
   let html = `<h3>${esc(S.sel.periodo)}</h3>`;
   const areas = AREAS.filter(a => puedeArea(a.cod));
   let algo = false;
   areas.forEach(A => {
     const d = data[A.cod] || {};
-    let aulas = abiertas ? aulasAsignadas.slice() : Object.keys(d);
+    const abiertas = !esAdmin() && !(asigU()[A.cod] || []).includes('*');
+    let aulas = abiertas ? aulasDe(A.cod) : Object.keys(d);
     aulas = [...new Set(aulas)].filter(a => d[a] || abiertas).sort((x, y) => orden(x) - orden(y));
     if (!aulas.length) return;
     algo = true;
@@ -1852,13 +1879,24 @@ function formUsuario(u) {
   $('uClave').value = ''; $('uClaveLbl').textContent = u ? 'Nueva contraseña (vacío = no cambiar)' : 'Contraseña';
   $('uRol').value = u ? u.rol : 'DOCENTE';
   $('uEstado').value = u ? u.estado : 'ACTIVO';
-  const areas = u ? u.areas : [], aulas = u ? u.aulas : [];
-  $('uAreas').innerHTML = `<label><input type="checkbox" data-area="*" ${areas.includes('*') ? 'checked' : ''}> <b>Todas</b></label>` +
-    AREAS.map(a => `<label><input type="checkbox" data-area="${a.cod}" ${areas.includes(a.cod) ? 'checked' : ''}> ${esc(a.nombre)}</label>`).join('');
-  $('uAulas').innerHTML = `<b>Todas</b><div class="ckgrid"><label><input type="checkbox" data-aula="*" ${aulas.includes('*') ? 'checked' : ''}> Todas las aulas del colegio</label></div>` +
-    aulasDisponibles().map(([g, ss]) => `<b>${GCORTO[g]}</b><div class="ckgrid">` +
-      `<label><input type="checkbox" data-aula="${g}-*" ${aulas.includes(g + '-*') ? 'checked' : ''}> todo ${GCORTO[g]}</label>` +
-      ss.map(s => `<label><input type="checkbox" data-aula="${g}-${s}" ${aulas.includes(g + '-' + s) ? 'checked' : ''}> ${s}</label>`).join('') + '</div>').join('');
+  // Asignación de un usuario existente (o legado: áreas × aulas)
+  let asig = {};
+  if (u) {
+    if (u.asig && Object.keys(u.asig).length) asig = u.asig;
+    else (u.areas || []).forEach(a => { if (a !== '*') asig[a] = (u.aulas || []).slice(); });
+  }
+  $('uAsig').innerHTML = AREAS.map(A => {
+    const l = asig[A.cod] || [], on = !!asig[A.cod];
+    return `<div class="asig-area ${on ? 'on' : ''}" data-a="${A.cod}">
+      <label class="asig-tit"><input type="checkbox" data-area="${A.cod}" ${on ? 'checked' : ''}> ${esc(A.nombre)}<span class="asig-res"></span></label>
+      <div class="asig-aulas aulas-g">
+        <b>Todas</b><div class="ckgrid"><label><input type="checkbox" data-aula="*" ${l.includes('*') ? 'checked' : ''}> Todas las aulas del colegio</label></div>` +
+      aulasDisponibles().map(([g, ss]) => `<b>${GCORTO[g]}</b><div class="ckgrid">` +
+        `<label><input type="checkbox" data-aula="${g}-*" ${l.includes(g + '-*') ? 'checked' : ''}> todo ${GCORTO[g]}</label>` +
+        ss.map(s => `<label><input type="checkbox" data-aula="${g}-${s}" ${l.includes(g + '-' + s) ? 'checked' : ''}> ${s}</label>`).join('') + '</div>').join('') +
+      `</div></div>`;
+  }).join('');
+  document.querySelectorAll('#uAsig .asig-area').forEach(resumenAsig);
   $('uPermisos').classList.toggle('hidden', $('uRol').value === 'SUPERADMIN');
   if (u) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1867,24 +1905,41 @@ async function cargarUsuarios() {
   catch (e) { toast(e.message, 'err'); return; }
   pintarUsuarios();
 }
+function leerAsigForm() {
+  const asig = {};
+  document.querySelectorAll('#uAsig .asig-area').forEach(b => {
+    if (!b.querySelector('[data-area]').checked) return;
+    const l = [...b.querySelectorAll('[data-aula]')].filter(i => i.checked).map(i => i.dataset.aula);
+    asig[b.dataset.a] = l;
+  });
+  return asig;
+}
+function resumenAsig(b) {
+  const on = b.querySelector('[data-area]').checked;
+  b.classList.toggle('on', on);
+  const l = [...b.querySelectorAll('[data-aula]')].filter(i => i.checked).map(i => i.dataset.aula);
+  b.querySelector('.asig-res').innerHTML = on ? (l.length ? ' — ' + textoAsig({ [b.dataset.a]: l }).replace(/^<b>.*?<\/b>: /, '') : ' — <span style="color:var(--C)">marca sus aulas</span>') : '';
+}
 function pintarUsuarios() {
-  const etiqueta = (arr, f) => arr.includes('*') ? '<span class="tag">todas</span>' : arr.map(x => `<span class="tag">${esc(f(x))}</span>`).join('') || '—';
-  $('uLista').innerHTML = `<table class="us"><thead><tr><th>Docente</th><th>Usuario</th><th class="hm">Áreas</th><th class="hm">Aulas</th><th></th></tr></thead><tbody>` +
+  const asigUsu = u => { const a = u.asig && Object.keys(u.asig).length ? u.asig : null; return a ? textoAsig(a) : '—'; };
+  $('uLista').innerHTML = `<table class="us"><thead><tr><th>Docente</th><th>Usuario</th><th class="hm">Áreas y aulas</th><th></th></tr></thead><tbody>` +
     S.usuarios.map(u => `<tr class="${u.estado === 'INACTIVO' ? 'off' : ''}">
       <td>${esc(u.nombre)} ${u.rol === 'SUPERADMIN' ? '<span class="tag adm">SUPERADMIN</span>' : ''}${u.estado === 'INACTIVO' ? ' <span class="tag">inactivo</span>' : ''}</td>
       <td><code>${esc(u.usuario)}</code></td>
-      <td class="hm">${u.rol === 'SUPERADMIN' ? 'todo' : etiqueta(u.areas, a => a)}</td>
-      <td class="hm">${u.rol === 'SUPERADMIN' ? 'todo' : etiqueta(u.aulas, fmtAula)}</td>
+      <td class="hm" style="font-size:12px">${u.rol === 'SUPERADMIN' ? 'todo' : asigUsu(u)}</td>
       <td><button class="btn sm" data-edit="${esc(u.usuario)}">Editar</button></td></tr>`).join('') + '</tbody></table>';
 }
 async function guardarUsuarioForm() {
-  const marcados = sel => [...document.querySelectorAll(sel)].filter(i => i.checked).map(i => i.dataset.area || i.dataset.aula);
   const datos = {
     nuevo: !uEditando, usuario: $('uUsuario').value.trim().toLowerCase(), nombre: $('uNombre').value.trim(),
     clave: $('uClave').value.trim(), rol: $('uRol').value, estado: $('uEstado').value,
-    areas: marcados('#uAreas input').join(','), aulas: marcados('#uAulas input').join(',')
+    asig: leerAsigForm()
   };
-  if (datos.rol === 'DOCENTE' && (!datos.areas || !datos.aulas)) { toast('Marca al menos un área y un aula', 'err'); return; }
+  if (datos.rol === 'DOCENTE') {
+    const vacias = Object.keys(datos.asig).filter(a => !datos.asig[a].length);
+    if (!Object.keys(datos.asig).length) { toast('Marca al menos un área con sus aulas', 'err'); return; }
+    if (vacias.length) { toast(`Marca las aulas de: ${vacias.map(a => areaObj(a).nombre).join(', ')}`, 'err'); return; }
+  }
   $('uGuardar').disabled = true;
   try {
     const r = await api({ accion: 'guardarUsuario', datos });
@@ -2065,6 +2120,7 @@ $('nDif').onclick = e => { if (e.target.id === 'nAplicar') aplicarNomina(); };
 $('uLimpiar').onclick = () => formUsuario(null);
 $('uRecargar').onclick = cargarUsuarios;
 $('uRol').onchange = () => $('uPermisos').classList.toggle('hidden', $('uRol').value === 'SUPERADMIN');
+$('uAsig').onchange = e => { const b = e.target.closest('.asig-area'); if (b) resumenAsig(b); };
 $('uLista').onclick = e => { const b = e.target.closest('[data-edit]'); if (b) formUsuario(S.usuarios.find(u => u.usuario === b.dataset.edit)); };
 $('btnSync').onclick = () => sincronizar(true);
 $('btnBackup').onclick = () => {
